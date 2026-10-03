@@ -1,7 +1,7 @@
-import Usuario from '../models/usuario.models.js';
-
 class LoginService {
-    async login(Usuario) {
+    async login(login) {
 
     }
 }
+
+module.exports = new LoginService();
