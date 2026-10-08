@@ -1,10 +1,10 @@
-const dbInstance = require('./config/database');
+const dbInstance = require('./src/config/database');
 const { ObjectId } = require('mongodb');
 const { Readable } = require('stream');
+const bcrypt = require('bcrypt'); // Importamos bcrypt
 
 async function runSeed() {
     try {
-        // 1. Conectamos usando tu Singleton
         await dbInstance.connect();
         const db = dbInstance.getDb();
         const bucket = dbInstance.getBucket();
@@ -12,7 +12,6 @@ async function runSeed() {
         await db.dropDatabase();
         console.log("Base de datos reiniciada.");
 
-        // Función auxiliar para subir a GridFS
         const subirArchivoAGridFs = (nombre, contenido) => {
             return new Promise((resolve, reject) => {
                 const uploadStream = bucket.openUploadStream(nombre);
@@ -24,30 +23,37 @@ async function runSeed() {
             });
         };
 
+        // --- ENCRIPTAR CONTRASEÑA ---
+        console.log("Encriptando contraseñas...");
+        const passwordPlana = "123";
+        const passwordHash = await bcrypt.hash(passwordPlana, 10);
+
         // --- CREACIÓN DE 3 USUARIOS ---
         const idAdmin = new ObjectId();
         const idHelder = new ObjectId();
         const idAuxiliar = new ObjectId();
 
         const usuarios = [
-            { _id: idAdmin, nombre: "Admin", email: "admin@cunoc.edu.gt", password: "123", rol: "admin", estado: true },
-            { _id: idHelder, nombre: "Helder", email: "helder@cunoc.edu.gt", password: "123", rol: "usuario", estado: true },
-            { _id: idAuxiliar, nombre: "Auxiliar", email: "auxiliar@cunoc.edu.gt", password: "123", rol: "usuario", estado: true }
+            { _id: idAdmin, nombre: "Admin", email: "admin@gmail.com", password: passwordHash, rol: "admin", estado: true },
+            { _id: idHelder, nombre: "Helder", email: "helder@gmail.com", password: passwordHash, rol: "usuario", estado: true },
+            { _id: idAuxiliar, nombre: "Auxiliar", email: "auxiliar@gmail.com", password: passwordHash, rol: "usuario", estado: true }
         ];
-        await db.collection('usuarios').insertMany(usuarios);
+        await db.collection('usuario').insertMany(usuarios);
+        console.log("3 Usuarios creados con contraseñas seguras.");
 
         // --- CREACIÓN DE CARPETAS ---
         const carpetas = [
             { _id: new ObjectId(), nombre: "universidad", path: "/universidad/", usuarioId: idHelder, estado: true, compartidoCon: [], fechaCreacion: new Date() },
             { _id: new ObjectId(), nombre: "proyectos", path: "/universidad/proyectos/", usuarioId: idHelder, estado: true, compartidoCon: [], fechaCreacion: new Date() }
         ];
-        await db.collection('carpetas').insertMany(carpetas);
+        await db.collection('carpeta').insertMany(carpetas);
+        console.log("Carpetas base creadas.");
 
         // --- CREACIÓN DE 50 ARCHIVOS, COMPARTICIÓN Y PAPELERA ---
         const archivosAGuardar = [];
         const bitacoras = [];
 
-        console.log("Generando 50 archivos...");
+        console.log("Generando 50 archivos (esto puede tomar un momento)...");
         for (let i = 1; i <= 50; i++) {
             const tipoArchivo = i % 2 === 0 ? '.md' : '.txt';
             const nombreArchivo = `documento_${i}${tipoArchivo}`;
@@ -55,16 +61,13 @@ async function runSeed() {
 
             const fileId = await subirArchivoAGridFs(nombreArchivo, contenidoDummy);
 
-            // Lógica para cumplir requerimientos
             let compartido = [];
             if (i <= 20) {
-                // Los primeros 20 archivos se comparten con el Auxiliar
                 compartido = [{ usuarioId: idAuxiliar, permiso: "lectura" }];
             }
 
             let estaActivo = true;
             if (i >= 45) {
-                // Los últimos 5 archivos se mandan a la papelera
                 estaActivo = false;
             }
 
@@ -93,11 +96,11 @@ async function runSeed() {
             });
         }
 
-        await db.collection('archivos').insertMany(archivosAGuardar);
+        await db.collection('archivo').insertMany(archivosAGuardar);
         await db.collection('bitacora').insertMany(bitacoras);
 
         console.log("✅ Seed completado con éxito.");
-        process.exit(0); // Cierra el proceso de Node.js al terminar
+        process.exit(0);
 
     } catch (error) {
         console.error("❌ Error en el seeder:", error);

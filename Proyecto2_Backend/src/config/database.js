@@ -1,12 +1,13 @@
 const { MongoClient, GridFSBucket } = require('mongodb');
+require('dotenv').config()
 
 class Database {
     constructor() {
         this.client = null;
         this.db = null;
         this.bucket = null;
-        this.uri = "mongodb://127.0.0.1:27017";
-        this.dbName = "mini_drive_db";
+        this.uri = process.env.MONGODB_URI;
+        this.dbName = process.env.DATABASE_NAME;
     }
 
     async connect() {

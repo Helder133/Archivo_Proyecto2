@@ -1,9 +1,10 @@
+require('dotenv').config(); 
 const express = require('express');
 const cors = require('cors'); // Permite solicitudes desde cualquier origen
 const dbInstance = require('./src/config/database')
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT;
 
 const router = require('./src/routes/routes.route');
 
