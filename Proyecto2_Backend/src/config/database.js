@@ -33,6 +33,11 @@ class Database {
         if (!this.bucket) throw new Error("GridFS no está inicializado.");
         return this.bucket;
     }
+
+    getClient() {
+        if (!this.client) throw new Error("El cliente de MongoDB no está inicializado. Llama a connect() primero.");
+        return this.client;
+    }
 }
 
 module.exports = new Database();

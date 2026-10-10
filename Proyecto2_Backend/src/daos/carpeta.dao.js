@@ -21,12 +21,25 @@ class CarpetaDAO {
         if (!ObjectId.isValid(id)) {
             return null;
         }
+        return await db.collection(carpetaCollectionName).findOne({ _id: new ObjectId(id), estado: true });
+    }
+
+    async findByIdSinEstado(id) {
+        const db = dbInstance.getDb();
+        if (!ObjectId.isValid(id)) {
+            return null;
+        }
         return await db.collection(carpetaCollectionName).findOne({ _id: new ObjectId(id) });
     }
 
     async findByRuta(ruta) {
         const db = dbInstance.getDb();
-        return await db.collection(carpetaCollectionName).find({ ruta: ruta }).toArray();
+        return await db.collection(carpetaCollectionName).find({ ruta: ruta, estado: true }).toArray();
+    }
+
+    async findPapeleria() {
+        const db = dbInstance.getDb();
+        return await db.collection(carpetaCollectionName).find({ estado: false }).toArray();
     }
 
     async update(id, data) {
@@ -38,7 +51,28 @@ class CarpetaDAO {
         return result.modifiedCount > 0;
     }
 
-    async delete(id) {
+    async actualizarRutas(rutaAnterior, rutaNueva, session) {
+        const db = dbInstance.getDb();
+        return await db.collection(carpetaCollectionName).updateMany(
+            {path: { $regex: `^${rutaAnterior}` }},
+            [
+                {
+                    $set:{
+                        path: {
+                            $replaceOne: {
+                                input: "$path",
+                                find: rutaAnterior,
+                                replacement: rutaNueva
+                            }
+                        }
+                    }
+                }
+            ],
+            { session }
+        );
+    }
+
+    async toggleEstado(id) {
         const db = dbInstance.getDb();
         if (!ObjectId.isValid(id)) {
             return null;
