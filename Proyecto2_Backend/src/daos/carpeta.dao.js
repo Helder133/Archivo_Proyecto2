@@ -4,9 +4,9 @@ const carpetaCollectionName = 'carpeta';
 
 class CarpetaDAO {
 
-    async existeNombreEnLaMismaRuta(nombre, ruta) {
+    async existeNombreEnLaMismaPath(nombre, path) {
         const db = dbInstance.getDb();
-        const result = await db.collection(carpetaCollectionName).findOne({ nombre: nombre, ruta: ruta });
+        const result = await db.collection(carpetaCollectionName).findOne({ nombre: nombre, path: path });
         return !!result;
     }
 
@@ -32,9 +32,9 @@ class CarpetaDAO {
         return await db.collection(carpetaCollectionName).findOne({ _id: new ObjectId(id) });
     }
 
-    async findByRuta(ruta) {
+    async findByPath(path) {
         const db = dbInstance.getDb();
-        return await db.collection(carpetaCollectionName).find({ ruta: ruta, estado: true }).toArray();
+        return await db.collection(carpetaCollectionName).find({ path: path, estado: true }).toArray();
     }
 
     async findPapeleria() {
@@ -51,18 +51,18 @@ class CarpetaDAO {
         return result.modifiedCount > 0;
     }
 
-    async actualizarRutas(rutaAnterior, rutaNueva, session) {
+    async actualizarPaths(pathAnterior, pathNueva, session) {
         const db = dbInstance.getDb();
         return await db.collection(carpetaCollectionName).updateMany(
-            {path: { $regex: `^${rutaAnterior}` }},
+            { path: { $regex: `^${pathAnterior}` } },
             [
                 {
-                    $set:{
+                    $set: {
                         path: {
                             $replaceOne: {
                                 input: "$path",
-                                find: rutaAnterior,
-                                replacement: rutaNueva
+                                find: pathAnterior,
+                                replacement: pathNueva
                             }
                         }
                     }
@@ -77,8 +77,32 @@ class CarpetaDAO {
         if (!ObjectId.isValid(id)) {
             return null;
         }
-        const result = await db.collection(carpetaCollectionName).updateOne({_id: new ObjectId(id) }, [{$set: { estado: {$not: "$estado"} }}]);
+        const result = await db.collection(carpetaCollectionName).updateOne({ _id: new ObjectId(id) }, [{ $set: { estado: { $not: "$estado" } } }]);
         return result.modifiedCount > 0;
+    }
+
+    async eliminarPorPath(path, session) {
+        const db = dbInstance.getDb();
+        return await db.collection(carpetaCollectionName).deleteMany(
+            {
+                $or: [
+                    {
+                        $expr: {
+                            $eq: [
+                                {
+                                    $concat: ["$path", "$nombre", "/"]
+                                },
+                                path
+                            ]
+                        }
+                    },
+                    {
+                        path: { $regex: `^${path}` }
+                    }
+                ]
+            },
+            { session }
+        );
     }
 
 }

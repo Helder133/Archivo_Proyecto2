@@ -3,7 +3,7 @@ const { ObjectId } = require('mongodb');
 
 class CarpetaService {
     async createCarpeta(carpeta) {
-        carpeta.ruta = carpeta.ruta || '/'; // Si no se proporciona una ruta, se establece como raíz
+        carpeta.path = carpeta.path || '/'; // Si no se proporciona una path, se establece como raíz
         if ((!carpeta.nombre || carpeta.nombre.trim() === '')
             && (!carpeta.usuarioId || carpeta.usuarioId.trim() === '')) {
             throw new Error('Faltan datos requeridos.');
@@ -15,14 +15,14 @@ class CarpetaService {
             throw new Error(`No se encontró el usuario con ID: ${carpeta.usuarioId}`);
         }
 
-        const existe = await carpetaDao.existeNombreEnLaMismaRuta(carpeta.nombre, carpeta.ruta);
+        const existe = await carpetaDao.existeNombreEnLaMismapath(carpeta.nombre, carpeta.path);
         if (existe) {
-            throw new Error(`Ya existe una carpeta con el nombre "${carpeta.nombre}" en la ruta "${carpeta.ruta}".`);
+            throw new Error(`Ya existe una carpeta con el nombre "${carpeta.nombre}" en la path "${carpeta.path}".`);
         }
 
         const newCarpeta = {
             nombre: carpeta.nombre,
-            ruta: carpeta.ruta,
+            path: carpeta.path,
             usuario_id: new ObjectId(carpeta.usuarioId),
             fechaCreacion: new Date(),
             estado: true,
@@ -38,8 +38,8 @@ class CarpetaService {
         return await carpetaDao.findById(id);
     }
 
-    async findCarpetasByRuta(ruta) {
-        return await carpetaDao.findByRuta(ruta);
+    async findCarpetasByPath(path) {
+        return await carpetaDao.findBypath(path);
     }
 
     async findPapeleria() {
@@ -52,30 +52,51 @@ class CarpetaService {
             throw new Error(`No se encontró la carpeta con ID: ${id}`);
         }
 
-        // Si se está actualizando el nombre, verificar si ya existe en la misma ruta
+        // Si se está actualizando el nombre, verificar si ya existe en la misma path
         if (data.nombre && data.nombre !== carpetaExistente.nombre) {
-            const existe = await carpetaDao.existeNombreEnLaMismaRuta(data.nombre, carpetaExistente.ruta);
+            const existe = await carpetaDao.existeNombreEnLaMismapath(data.nombre, carpetaExistente.path);
             if (existe) {
-                throw new Error(`Ya existe una carpeta con el nombre "${data.nombre}" en la ruta "${carpetaExistente.ruta}".`);
+                throw new Error(`Ya existe una carpeta con el nombre "${data.nombre}" en la path "${carpetaExistente.path}".`);
             }
         }
 
         return await carpetaDao.update(id, data);
     }
 
-    async moverCarpeta(rutaAnterior, rutaNueva) {
+    async moverCarpeta(pathAnterior, pathNueva) {
         const dbInstance = require('../config/database');
         const client = dbInstance.getClient();
         const session = client.startSession();
 
         try {
             await session.withTransaction(async () => {
-                await carpetaDao.actualizarRutas(rutaAnterior, rutaNueva, session);
-                // Aquí también deberías llamar a la función de actualización de rutas del archivoDAO si es necesario
+                await carpetaDao.actualizarpaths(pathAnterior, pathNueva, session);
+                const archivoService = require('./archivo.service');
+                await archivoService.moverArchivos(pathAnterior, pathNueva, session);
             });
             return true;
         } catch (error) {
             console.error("Error al mover carpeta:", error);
+            throw error;
+        } finally {
+            await session.endSession();
+        }
+    }
+
+    async eliminarCarpetaCompleta(retuaCompleta) {
+        const dbInstance = require('../config/database');
+        const client = dbInstance.getClient();
+        const session = client.startSession();
+
+        try {
+            await session.withTransaction(async () => {
+                const archivoService = require('./archivo.service');
+                await archivoService.eliminarArchivosPorpath(retuaCompleta, session);
+                await carpetaDao.eliminarPorpath(retuaCompleta, session);
+            });
+            return true;
+        } catch (error) {
+            console.error("Error al eliminar carpeta:", error);
             throw error;
         } finally {
             await session.endSession();
