@@ -15,4 +15,10 @@ const tipoRecursoEnum = Object.freeze({
     CARPETA: 'carpeta'
 });
 
-module.exports = { usuarioEnum, bitacoraEnum, tipoRecursoEnum };
+const permisosEnum = Object.freeze({
+    LECTURA: 'lectura',
+    ESCRITURA: 'editar',
+    ELIMINACION: 'comentar'
+});
+
+module.exports = { usuarioEnum, bitacoraEnum, tipoRecursoEnum, permisosEnum };

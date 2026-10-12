@@ -5,7 +5,7 @@ class CarpetaService {
     async createCarpeta(carpeta) {
         carpeta.path = carpeta.path || '/'; // Si no se proporciona una path, se establece como raíz
         if ((!carpeta.nombre || carpeta.nombre.trim() === '')
-            && (!carpeta.usuarioId || carpeta.usuarioId.trim() === '')) {
+            || (!carpeta.usuarioId || carpeta.usuarioId.trim() === '')) {
             throw new Error('Faltan datos requeridos.');
         }
 
@@ -23,7 +23,7 @@ class CarpetaService {
         const newCarpeta = {
             nombre: carpeta.nombre,
             path: carpeta.path,
-            usuario_id: new ObjectId(carpeta.usuarioId),
+            usuarioId: new ObjectId(carpeta.usuarioId),
             fechaCreacion: new Date(),
             estado: true,
             compartidoCon: carpeta.compartidoCon || []
@@ -35,7 +35,11 @@ class CarpetaService {
 
 
     async findCarpetaById(id) {
-        return await carpetaDao.findById(id);
+        const carpeta = await carpetaDao.findById(id);
+        if (!carpeta) {
+            throw new Error(`No se encontró la carpeta con ID: ${id}`);
+        }
+        return carpeta;
     }
 
     async findCarpetasByPath(path) {
@@ -111,7 +115,46 @@ class CarpetaService {
         return await carpetaDao.toggleEstado(id);
     }
 
+    async compartirCarpeta(id, datosCompartir) {
+        const nuevosParaCompartir = [];
+        for (const compartido of datosCompartir) {
+            if (!compartido.usuarioId || !compartido.permiso) {
+                throw new Error('Faltan datos requeridos para compartir la carpeta.');
+            }
+            if (!ObjectId.isValid(id) || !ObjectId.isValid(compartido.usuarioId)) {
+                throw new Error('ID de carpeta o usuario inválido.');
+            }
+            const yaExiste = await carpetaDao.validarCompartidoCon(id, compartido.usuarioId);
+            if (yaExiste) {
+                await this.cambiarPermisoDeCompartido(id, compartido);
+            } else {
+                nuevosParaCompartir.push(compartido);
+            }
+        }
+        if (nuevosParaCompartir.length > 0) {
+            return await carpetaDao.compartirCarpeta(id, nuevosParaCompartir);
+        }
 
+        return true;
+    }
+
+    async cambiarPermisoDeCompartido(id, datosCompartido) {
+        if (!datosCompartido.usuarioId || !datosCompartido.permiso) {
+            throw new Error('Faltan datos requeridos para cambiar el permiso.');
+        }
+
+        if (!ObjectId.isValid(id) || !ObjectId.isValid(datosCompartido.usuarioId)) {
+            throw new Error('ID de carpeta o usuario inválido.');
+        }
+        return await carpetaDao.cambiarPermisoDeCompartido(id, datosCompartido.usuarioId, datosCompartido.permiso);
+    }
+
+    async eliminarCompartido(id, usuarioId) {
+        if (!ObjectId.isValid(id) || !ObjectId.isValid(usuarioId)) {
+            throw new Error('ID de carpeta o usuario inválido.');
+        }
+        return await carpetaDao.eliminarCompartido(id, usuarioId);
+    }
 
 }
 

@@ -105,6 +105,69 @@ class CarpetaDAO {
         );
     }
 
+    async validarCompartidoCon(carpetaId, usuarioId) {
+        const db = dbInstance.getDb();
+        if (!ObjectId.isValid(carpetaId) || !ObjectId.isValid(usuarioId)) {
+            return false;
+        }
+
+        const carpeta = await db.collection(carpetaCollectionName).findOne({
+            _id: new ObjectId(carpetaId),
+            "compartidoCon.usuarioId": new ObjectId(usuarioId)
+        });
+
+        return !!carpeta;
+    }
+
+    async compartirCarpeta(id, datosCompartir) {
+        const db = dbInstance.getDb();
+        if (!ObjectId.isValid(id)) {
+            return null;
+        }
+
+        const result = await db.collection(carpetaCollectionName).updateOne(
+            { _id: new ObjectId(id) },
+            { $addToSet: { compartidoCon: { $each: datosCompartir } } }
+        );
+
+        return result.modifiedCount > 0;
+    }
+
+    async cambiarPermisoDeCompartido(id, usuarioId, nuevoPermiso) {
+        const db = dbInstance.getDb();
+        if (!ObjectId.isValid(id) || !ObjectId.isValid(usuarioId)) {
+            return null;
+        }
+
+        const result = await db.collection(carpetaCollectionName).updateOne(
+            {
+                _id: new ObjectId(id),
+                "compartidoCon.usuarioId": new ObjectId(usuarioId)
+            },
+            {
+                $set: {
+                    "compartidoCon.$.permiso": nuevoPermiso
+                }
+            }
+        );
+
+        return result.modifiedCount > 0;
+    }
+
+    async eliminarCompartido(id, usuarioId) {
+        const db = dbInstance.getDb();
+        if (!ObjectId.isValid(id)) {
+            return null;
+        }
+
+        const result = await db.collection(carpetaCollectionName).updateOne(
+            { _id: new ObjectId(id) },
+            { $pull: { compartidoCon: { usuarioId: new ObjectId(usuarioId) } } }
+        );
+
+        return result.modifiedCount > 0;
+    }
+
 }
 
 module.exports = new CarpetaDAO();

@@ -62,8 +62,9 @@ async function runSeed() {
             const fileId = await subirArchivoAGridFs(nombreArchivo, contenidoDummy);
 
             let compartido = [];
+            const permiso = i % 3 === 0 ? "lectura" : "editar";
             if (i <= 20) {
-                compartido = [{ usuarioId: idAuxiliar, permiso: "lectura" }];
+                compartido = [{ usuarioId: idAuxiliar, permiso: permiso }];
             }
 
             let estaActivo = true;
