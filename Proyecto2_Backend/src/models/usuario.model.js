@@ -1,15 +1,39 @@
 const { usuarioEnum } = require('./enums.enum.js');
+const mongoose = require('mongoose');
 
-class Usuario {
-    constructor(datos = {}) {
-        this.id = datos.id || null;
-        this.nombre = datos.nombre || '';
-        this.email = datos.email || '';
-        this.password = datos.password || '';
-        this.rol = datos.rol || usuarioEnum.USUARIO;
-        this.estado = datos.estado !== undefined ? datos.estado : true;
+const usuarioSchema = new mongoose.Schema(
+    {
+        nombre: {
+            type: String,
+            required: true,
+            trim: true
+        },
+        email: {
+            type: String,
+            required: true,
+            trim: true,
+            unique: true
+        },
+        password: {
+            type: String,
+            required: true
+        },
+        rol: {
+            type: String,
+            enum: Object.values(usuarioEnum),
+            default: usuarioEnum.USUARIO
+        },
+        estado: {
+            type: Boolean,
+            default: true
+        }
+
+    }, 
+    {
+        collection: 'usuario',
+        versionKey: false,
     }
-}
+)
 
 class Login {
     constructor(datos = {}) {
@@ -18,4 +42,6 @@ class Login {
     }
 }
 
-module.exports = { Usuario, Login };
+const UsuarioModel = mongoose.model('Usuario', usuarioSchema);
+
+module.exports = UsuarioModel;

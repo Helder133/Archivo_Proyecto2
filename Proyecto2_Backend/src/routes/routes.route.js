@@ -17,9 +17,9 @@ router.get('/usuario/buscar/:coincidence', controllerUsuario.controllerGetUsuari
 
 // Rutas de carpeta
 router.post('/carpeta', controllerCarpeta.createCarpeta);
-router.get('/carpeta/:id', controllerCarpeta.findCarpetaById);
-router.get('/carpeta/path/:path', controllerCarpeta.findCarpetasByPath);
+router.get('/carpeta/path', controllerCarpeta.findCarpetasByPath);
 router.get('/carpeta/papeleria', controllerCarpeta.findPapeleria);
+router.get('/carpeta/:id', controllerCarpeta.findCarpetaById);
 router.put('/carpeta/:id', controllerCarpeta.updateCarpeta);
 router.post('/carpeta/mover', controllerCarpeta.moverCarpeta);
 router.post('/carpeta/eliminar/:path', controllerCarpeta.eliminarCarpeta);

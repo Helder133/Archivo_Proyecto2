@@ -3,18 +3,18 @@ const { ObjectId } = require('mongodb');
 const archivoCollectionName = 'archivo';
 
 class ArchivoDAO {
-    async actualizarRutas(rutaAnterior, rutaNueva, session) {
+    async actualizarPaths(pathAnterior, pathNueva, session) {
         const db = dbInstance.getDb();
         return await db.collection(archivoCollectionName).updateMany(
-            { path: { $regex: `^${rutaAnterior}` } },
+            { path: { $regex: `^${pathAnterior}` } },
             [
                 {
                     $set: {
                         path: {
                             $replaceOne: {
                                 input: "$path",
-                                find: rutaAnterior,
-                                replacement: rutaNueva
+                                find: pathAnterior,
+                                replacement: pathNueva
                             }
                         }
                     }
@@ -24,21 +24,21 @@ class ArchivoDAO {
         );
     }
 
-    async eliminarPorRuta(ruta, session) {
+    async eliminarPorPath(path, session) {
         const db = dbInstance.getDb();
         return await db.collection(archivoCollectionName).deleteMany(
             {
-                path: { $regex: `^${ruta}` }
+                path: { $regex: `^${path}` }
             },
             { session }
         );
     }
 
-    async obtenerIdsGridFSPorRuta(ruta, session) {
+    async obtenerIdsGridFSPorPath(path, session) {
         const db = dbInstance.getDb();
 
         const archivos = await db.collection(archivoCollectionName).find(
-            { path: { $regex: `^${ruta}` } },
+            { path: { $regex: `^${path}` } },
             {
                 projection: { archivoGridFsId: 1 },
                 session

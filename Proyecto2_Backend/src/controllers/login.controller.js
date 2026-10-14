@@ -15,7 +15,7 @@ class LoginController {
 
         } catch (error) {
             res.status(401).json({
-                mensaje: 'Credenciales inválidas.'
+                mensaje: error.message || 'Credenciales inválidas.'
             });
         }
     }

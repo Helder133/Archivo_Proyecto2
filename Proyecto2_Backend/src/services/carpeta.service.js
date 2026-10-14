@@ -1,4 +1,4 @@
-const carpetaDao = require('../daos/carpeta.dao');
+const carpetaDao = require('../repository/carpeta.repository');
 const { ObjectId } = require('mongodb');
 
 class CarpetaService {
@@ -9,13 +9,13 @@ class CarpetaService {
             throw new Error('Faltan datos requeridos.');
         }
 
-        const usuarioDao = require('../daos/usuario.dao');
+        const usuarioDao = require('../repository/usuario.repository');
         const usuario = await usuarioDao.findById(carpeta.usuarioId);
         if (!usuario) {
             throw new Error(`No se encontró el usuario con ID: ${carpeta.usuarioId}`);
         }
 
-        const existe = await carpetaDao.existeNombreEnLaMismapath(carpeta.nombre, carpeta.path);
+        const existe = await carpetaDao.existeNombreEnLaMismaPath(carpeta.nombre, carpeta.path);
         if (existe) {
             throw new Error(`Ya existe una carpeta con el nombre "${carpeta.nombre}" en la path "${carpeta.path}".`);
         }
@@ -32,8 +32,6 @@ class CarpetaService {
         return await carpetaDao.create(newCarpeta);
     }
 
-
-
     async findCarpetaById(id) {
         const carpeta = await carpetaDao.findById(id);
         if (!carpeta) {
@@ -43,7 +41,7 @@ class CarpetaService {
     }
 
     async findCarpetasByPath(path) {
-        return await carpetaDao.findBypath(path);
+        return await carpetaDao.findByPath(path);
     }
 
     async findPapeleria() {
@@ -58,7 +56,7 @@ class CarpetaService {
 
         // Si se está actualizando el nombre, verificar si ya existe en la misma path
         if (data.nombre && data.nombre !== carpetaExistente.nombre) {
-            const existe = await carpetaDao.existeNombreEnLaMismapath(data.nombre, carpetaExistente.path);
+            const existe = await carpetaDao.existeNombreEnLaMismaPath(data.nombre, carpetaExistente.path);
             if (existe) {
                 throw new Error(`Ya existe una carpeta con el nombre "${data.nombre}" en la path "${carpetaExistente.path}".`);
             }
@@ -74,7 +72,7 @@ class CarpetaService {
 
         try {
             await session.withTransaction(async () => {
-                await carpetaDao.actualizarpaths(pathAnterior, pathNueva, session);
+                await carpetaDao.actualizarPaths(pathAnterior, pathNueva, session);
                 const archivoService = require('./archivo.service');
                 await archivoService.moverArchivos(pathAnterior, pathNueva, session);
             });
@@ -95,8 +93,8 @@ class CarpetaService {
         try {
             await session.withTransaction(async () => {
                 const archivoService = require('./archivo.service');
-                await archivoService.eliminarArchivosPorpath(retuaCompleta, session);
-                await carpetaDao.eliminarPorpath(retuaCompleta, session);
+                await archivoService.eliminarArchivosPorPath(retuaCompleta, session);
+                await carpetaDao.eliminarPorPath(retuaCompleta, session);
             });
             return true;
         } catch (error) {

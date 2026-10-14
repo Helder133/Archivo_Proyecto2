@@ -3,11 +3,11 @@ const carpetaService = require('../services/carpeta.service');
 class CarpetaController {
     async createCarpeta(req, res) {
         try {
-            const carpeta = await carpetaService.createCarpeta(req.body);
+            const carpeta = req.body.carpeta;
+            await carpetaService.createCarpeta(carpeta);
 
             res.status(201).json({
-                mensaje: 'Carpeta creada exitosamente.',
-                id: carpeta
+                mensaje: 'Carpeta creada exitosamente.'
             });
         } catch (error) {
             res.status(400).json({ error: error.message });
@@ -25,7 +25,8 @@ class CarpetaController {
 
     async findCarpetasByPath(req, res) {
         try {
-            const carpetas = await carpetaService.findCarpetasByPath(req.params.path);
+            const path = req.query.path ?? '/'; // Si no se proporciona una path, se establece como raíz
+            const carpetas = await carpetaService.findCarpetasByPath(path);
             res.json(carpetas);
         } catch (error) {
             res.status(500).json({ error: error.message });

@@ -1,12 +1,12 @@
-const {Usuario} = require('../models/usuario.model.js');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
-const usuarioDAO = require('../daos/usuario.dao.js');
+const usuarioDAO = require('../repository/usuario.repository.js');
 
 class LoginService {
+
     async login(login) {
-        const email = login.email;
-        const password = login.password;
+        const email = login?.email;
+        const password = login?.password;
 
         if (!email || !password) {
             throw new Error('Email y contraseña son requeridos.');
@@ -24,7 +24,7 @@ class LoginService {
         }
 
         const payload = {
-            id: usuario.id,
+            id: usuario._id.toString(),
             rol: usuario.rol
         }
 
@@ -32,14 +32,14 @@ class LoginService {
         const token = jwt.sign(payload, firmaSecreta, { expiresIn: '24h' });
 
         return {
-            token, 
-            usuario: new Usuario ({
-                id: usuario._id,
+            token,
+            usuario: {
+                id: usuario._id.toString,
                 nombre: usuario.nombre,
                 email: usuario.email,
                 rol: usuario.rol,
                 estado: usuario.estado
-            })
+            }
         }
     }
 }

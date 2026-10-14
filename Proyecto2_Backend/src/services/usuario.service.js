@@ -1,5 +1,5 @@
 const bcrypt = require('bcrypt');
-const usuarioDao = require('../daos/usuario.dao.js');
+const usuarioDao = require('../repository/usuario.repository.js');
 
 class UsuarioService {
     async createUsuario(usuario) {
