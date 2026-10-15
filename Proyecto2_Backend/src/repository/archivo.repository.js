@@ -1,8 +1,8 @@
 const dbInstance = require('../config/database');
-const { ObjectId } = require('mongodb');
 const archivoCollectionName = 'archivo';
 
-class ArchivoDAO {
+class ArchivoRepository {
+
     async actualizarPaths(pathAnterior, pathNueva, session) {
         const db = dbInstance.getDb();
         return await db.collection(archivoCollectionName).updateMany(
@@ -60,13 +60,13 @@ class ArchivoDAO {
         const db = dbInstance.getDb();
 
         // Eliminar los fragmentos binarios.
-        await db.collection('fs.chunks').deleteMany(
+        await db.collection('archivos_fisicos.chunks').deleteMany(
             { files_id: { $in: ids } },
             { session }
         );
 
         // Eliminar los registros de archivos de GridFS.
-        await db.collection('fs.files').deleteMany(
+        await db.collection('archivos_fisicos.files').deleteMany(
             { _id: { $in: ids } },
             { session }
         );
@@ -74,4 +74,4 @@ class ArchivoDAO {
 
 }
 
-module.exports = new ArchivoDAO();
+module.exports = new ArchivoRepository();

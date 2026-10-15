@@ -5,8 +5,15 @@ const usuarioDAO = require('../repository/usuario.repository.js');
 class LoginService {
 
     async login(login) {
-        const email = login?.email;
-        const password = login?.password;
+        if (
+            typeof login?.email !== 'string' ||
+            typeof login?.password !== 'string'
+        ) {
+            throw new Error('Email y contraseña son requeridos.');
+        }
+
+        const email = login.email.trim();
+        const password = login.password.trim();
 
         if (!email || !password) {
             throw new Error('Email y contraseña son requeridos.');
@@ -34,7 +41,7 @@ class LoginService {
         return {
             token,
             usuario: {
-                id: usuario._id.toString,
+                id: usuario._id.toString(),
                 nombre: usuario.nombre,
                 email: usuario.email,
                 rol: usuario.rol,

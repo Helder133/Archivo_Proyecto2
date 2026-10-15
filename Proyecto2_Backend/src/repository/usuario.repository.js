@@ -7,7 +7,7 @@ class UsuarioRepository {
         return await UsuarioModel.findOne({
             email,
             estado: true
-        }).select('+password');
+        });
     }
 
     async existsByEmail(email) {
@@ -20,15 +20,19 @@ class UsuarioRepository {
             return null;
         }
 
-        return await UsuarioModel.findOne({
-            email,
-            _id: { $ne: id }
-        }).select('_id').lean();
+        const exists = await UsuarioModel.exists(
+            {
+                email,
+                _id: { $ne: id }
+            }
+        );
+
+        return exists !== null;
     }
 
     async create(usuario) {
         const nuevoUsuario = await UsuarioModel.create(usuario);
-        return nuevoUsuario._id;
+        return nuevoUsuario._id.toString();
     }
 
     async update(id, data) {
@@ -42,35 +46,27 @@ class UsuarioRepository {
             { runValidators: true }
         );
 
+        return resultado.matchedCount > 0;
+    }
+
+    async cambiarEstado(id) {
+        if (!mongoose.Types.ObjectId.isValid(id)) return null;
+
+        const resultado = await UsuarioModel.updateOne(
+            { _id: id },
+            [{ $set: { estado: { $not: "$estado" } } }]
+        );
+
         return resultado.modifiedCount > 0;
     }
 
-    async delete(id) {
-        if (!mongoose.Types.ObjectId.isValid(id)) {
-            return null;
-        }
-
-        const usuario = await UsuarioModel.findById(id);
-
-        if (!usuario) {
-            return false;
-        }
-
-        usuario.estado = !usuario.estado;
-        await usuario.save();
-
-        return true;
-    }
-
     async getUsuarioByCoincidence(coincidence) {
-        const busqueda = new RegExp(coincidence, 'i');
-
         return await UsuarioModel.find({
             $or: [
-                { nombre: busqueda },
-                { email: busqueda }
+                { nombre: coincidence },
+                { email: coincidence }
             ]
-        }).lean();
+        }).select('-password').lean();
     }
 
     async findById(id) {
@@ -81,7 +77,7 @@ class UsuarioRepository {
         return await UsuarioModel.findOne({
             _id: id,
             estado: true
-        }).lean();
+        }).select('-password').lean();
     }
 
     async findByIdSinEstado(id) {
@@ -89,11 +85,11 @@ class UsuarioRepository {
             return null;
         }
 
-        return await UsuarioModel.findById(id).lean();
+        return await UsuarioModel.findById(id).select('-password').lean();
     }
 
     async findAll() {
-        return await UsuarioModel.find().lean();
+        return await UsuarioModel.find().select('-password').lean();
     }
 
 }

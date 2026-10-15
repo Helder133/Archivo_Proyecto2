@@ -35,12 +35,6 @@ const usuarioSchema = new mongoose.Schema(
     }
 )
 
-class Login {
-    constructor(datos = {}) {
-        this.email = datos.email || '';
-        this.password = datos.password || '';
-    }
-}
 
 const UsuarioModel = mongoose.model('Usuario', usuarioSchema);
 

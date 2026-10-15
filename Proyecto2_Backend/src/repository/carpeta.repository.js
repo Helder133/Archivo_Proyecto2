@@ -1,59 +1,45 @@
-const dbInstance = require('../config/database.js');
-const { ObjectId } = require('mongodb');
-const carpetaCollectionName = 'carpeta';
+const mongoose = require('mongoose');
+const CarpetaModel = require('../models/carpeta.model.js');
 
-class CarpetaDAO {
+class CarpetaRepository {
 
     async existeNombreEnLaMismaPath(nombre, path) {
-        const db = dbInstance.getDb();
-        const result = await db.collection(carpetaCollectionName).findOne({ nombre: nombre, path: path });
-        return !!result;
+        const result = await CarpetaModel.exists({ nombre, path });
+        return result !== null;
     }
 
     async create(carpeta) {
-        const db = dbInstance.getDb();
-        const result = await db.collection(carpetaCollectionName).insertOne(carpeta);
-        return result.insertedId;
+        const nuevaCarpeta = await CarpetaModel.create(carpeta);
+        return nuevaCarpeta._id.toString();
     }
 
     async findById(id) {
-        const db = dbInstance.getDb();
-        if (!ObjectId.isValid(id)) {
-            return null;
-        }
-        return await db.collection(carpetaCollectionName).findOne({ _id: new ObjectId(id), estado: true });
+        if (!mongoose.Types.ObjectId.isValid(id)) return null;
+        return await CarpetaModel.findOne({ _id: id, estado: true }).lean();
     }
 
     async findByIdSinEstado(id) {
-        const db = dbInstance.getDb();
-        if (!ObjectId.isValid(id)) {
-            return null;
-        }
-        return await db.collection(carpetaCollectionName).findOne({ _id: new ObjectId(id) });
+        if (!mongoose.Types.ObjectId.isValid(id)) return null;
+        return await CarpetaModel.findById(id).lean();
     }
 
     async findByPath(path) {
-        const db = dbInstance.getDb();
-        return await db.collection(carpetaCollectionName).find({ path: path, estado: true }).toArray();
+        return await CarpetaModel.find({ path: path, estado: true }).lean();
     }
 
     async findPapeleria() {
-        const db = dbInstance.getDb();
-        return await db.collection(carpetaCollectionName).find({ estado: false }).toArray();
+        return await CarpetaModel.find({ estado: false }).lean();
     }
 
-    async update(id, data) {
-        const db = dbInstance.getDb();
-        if (!ObjectId.isValid(id)) {
-            return null;
-        }
-        const result = await db.collection(carpetaCollectionName).updateOne({ _id: new ObjectId(id) }, { $set: data });
+    async update(id, data, session = null) {
+        if (!mongoose.Types.ObjectId.isValid(id)) return null;
+        const options = session ? { session } : {}; // Inyectamos la sesión si existe
+        const result = await CarpetaModel.updateOne({ _id: id }, { $set: data }, options);
         return result.modifiedCount > 0;
     }
 
     async actualizarPaths(pathAnterior, pathNueva, session) {
-        const db = dbInstance.getDb();
-        return await db.collection(carpetaCollectionName).updateMany(
+        return await CarpetaModel.updateMany(
             { path: { $regex: `^${pathAnterior}` } },
             [
                 {
@@ -73,32 +59,24 @@ class CarpetaDAO {
     }
 
     async toggleEstado(id) {
-        const db = dbInstance.getDb();
-        if (!ObjectId.isValid(id)) {
-            return null;
-        }
-        const result = await db.collection(carpetaCollectionName).updateOne({ _id: new ObjectId(id) }, [{ $set: { estado: { $not: "$estado" } } }]);
+        if (!mongoose.Types.ObjectId.isValid(id)) return null;
+        const result = await CarpetaModel.updateOne(
+            { _id: id },
+            [{ $set: { estado: { $not: "$estado" } } }]
+        );
         return result.modifiedCount > 0;
     }
 
     async eliminarPorPath(path, session) {
-        const db = dbInstance.getDb();
-        return await db.collection(carpetaCollectionName).deleteMany(
+        return await CarpetaModel.deleteMany(
             {
                 $or: [
                     {
                         $expr: {
-                            $eq: [
-                                {
-                                    $concat: ["$path", "$nombre", "/"]
-                                },
-                                path
-                            ]
+                            $eq: [{ $concat: ["$path", "$nombre", "/"] }, path]
                         }
                     },
-                    {
-                        path: { $regex: `^${path}` }
-                    }
+                    { path: { $regex: `^${path}` } }
                 ]
             },
             { session }
@@ -106,68 +84,41 @@ class CarpetaDAO {
     }
 
     async validarCompartidoCon(carpetaId, usuarioId) {
-        const db = dbInstance.getDb();
-        if (!ObjectId.isValid(carpetaId) || !ObjectId.isValid(usuarioId)) {
-            return false;
-        }
+        if (!mongoose.Types.ObjectId.isValid(carpetaId) || !mongoose.Types.ObjectId.isValid(usuarioId)) return false;
 
-        const carpeta = await db.collection(carpetaCollectionName).findOne({
-            _id: new ObjectId(carpetaId),
-            "compartidoCon.usuarioId": new ObjectId(usuarioId)
+        const result = await CarpetaModel.exists({
+            _id: carpetaId,
+            "compartidoCon.usuarioId": usuarioId
         });
-
-        return !!carpeta;
+        return result !== null;
     }
 
     async compartirCarpeta(id, datosCompartir) {
-        const db = dbInstance.getDb();
-        if (!ObjectId.isValid(id)) {
-            return null;
-        }
-
-        const result = await db.collection(carpetaCollectionName).updateOne(
-            { _id: new ObjectId(id) },
+        if (!mongoose.Types.ObjectId.isValid(id)) return null;
+        const result = await CarpetaModel.updateOne(
+            { _id: id },
             { $addToSet: { compartidoCon: { $each: datosCompartir } } }
         );
-
         return result.modifiedCount > 0;
     }
 
     async cambiarPermisoDeCompartido(id, usuarioId, nuevoPermiso) {
-        const db = dbInstance.getDb();
-        if (!ObjectId.isValid(id) || !ObjectId.isValid(usuarioId)) {
-            return null;
-        }
-
-        const result = await db.collection(carpetaCollectionName).updateOne(
-            {
-                _id: new ObjectId(id),
-                "compartidoCon.usuarioId": new ObjectId(usuarioId)
-            },
-            {
-                $set: {
-                    "compartidoCon.$.permiso": nuevoPermiso
-                }
-            }
+        if (!mongoose.Types.ObjectId.isValid(id) || !mongoose.Types.ObjectId.isValid(usuarioId)) return null;
+        const result = await CarpetaModel.updateOne(
+            { _id: id, "compartidoCon.usuarioId": usuarioId },
+            { $set: { "compartidoCon.$.permiso": nuevoPermiso } }
         );
-
         return result.modifiedCount > 0;
     }
 
     async eliminarCompartido(id, usuarioId) {
-        const db = dbInstance.getDb();
-        if (!ObjectId.isValid(id)) {
-            return null;
-        }
-
-        const result = await db.collection(carpetaCollectionName).updateOne(
-            { _id: new ObjectId(id) },
-            { $pull: { compartidoCon: { usuarioId: new ObjectId(usuarioId) } } }
+        if (!mongoose.Types.ObjectId.isValid(id)) return null;
+        const result = await CarpetaModel.updateOne(
+            { _id: id },
+            { $pull: { compartidoCon: { usuarioId: usuarioId } } }
         );
-
         return result.modifiedCount > 0;
     }
-
 }
 
-module.exports = new CarpetaDAO();
+module.exports = new CarpetaRepository();
