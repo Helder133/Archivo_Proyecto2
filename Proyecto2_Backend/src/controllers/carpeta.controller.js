@@ -44,6 +44,7 @@ class CarpetaController {
 
     async updateCarpeta(req, res) {
         try {
+            console.log('Datos recibidos para actualizar la carpeta:', req.body);
             await carpetaService.updateCarpeta(req.params.id, req.body);
             res.json({ message: 'Carpeta actualizada correctamente' });
         } catch (error) {
@@ -56,6 +57,16 @@ class CarpetaController {
             const { pathAnterior, pathNueva } = req.body;
             await carpetaService.moverCarpeta(pathAnterior, pathNueva);
             res.json({ message: 'Carpeta movida correctamente' });
+        } catch (error) {
+            res.status(400).json({ error: error.message });
+        }
+    }
+
+    async cambiarEstadoCarpeta(req, res) {
+        try {
+            const { id } = req.params;
+            await carpetaService.actualizarEstadoCarpeta(id);
+            res.json({ message: 'Estado de la carpeta cambiado correctamente' });
         } catch (error) {
             res.status(400).json({ error: error.message });
         }

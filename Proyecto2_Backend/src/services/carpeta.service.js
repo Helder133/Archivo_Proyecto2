@@ -48,6 +48,7 @@ class CarpetaService {
     }
 
     async updateCarpeta(id, data) {
+        console.log('Iniciando actualización de carpeta con ID:', id, 'y datos:', data);
         const carpetaExistente = await carpetaRepository.findById(id);
         if (!carpetaExistente) {
             throw new Error(`No se encontró la carpeta con ID: ${id}`);
@@ -55,9 +56,11 @@ class CarpetaService {
 
         // Si NO hay cambio de nombre (ej. solo están actualizando otro campo), hacemos un update normal
         if (!data.nombre || data.nombre === carpetaExistente.nombre) {
+            console.log('No hay cambio de nombre detectado. Procediendo con actualización normal...');
             return await carpetaRepository.update(id, data);
         }
 
+        console.log('Cambio de nombre detectado. Validando existencia de carpeta con el nuevo nombre...');
         // Si SÍ hay cambio de nombre, validamos que el nuevo nombre no choque con otra carpeta
         const existe = await carpetaRepository.existeNombreEnLaMismaPath(data.nombre, carpetaExistente.path);
         if (existe) {
@@ -66,7 +69,9 @@ class CarpetaService {
 
         // Calculamos las rutas absolutas para los hijos basándonos en el nombre viejo y el nuevo
         const pathAnteriorHijos = `${carpetaExistente.path}${carpetaExistente.nombre}/`;
+        console.log('Ruta anterior para hijos:', pathAnteriorHijos);
         const pathNuevaHijos = `${carpetaExistente.path}${data.nombre}/`;
+        console.log('Ruta nueva para hijos:', pathNuevaHijos);
 
         const session = await mongoose.startSession();
 
@@ -136,44 +141,85 @@ class CarpetaService {
     }
 
     async compartirCarpeta(id, datosCompartir) {
-        const nuevosParaCompartir = [];
-        for (const compartido of datosCompartir) {
-            if (!compartido.usuarioId || !compartido.permiso) {
-                throw new Error('Faltan datos requeridos para compartir la carpeta.');
-            }
-            if (!mongoose.Types.ObjectId.isValid(id) || !mongoose.Types.ObjectId.isValid(compartido.usuarioId)) {
-                throw new Error('ID de carpeta o usuario inválido.');
-            }
-            const yaExiste = await carpetaRepository.validarCompartidoCon(id, compartido.usuarioId);
-            if (yaExiste) {
-                await this.cambiarPermisoDeCompartido(id, compartido);
-            } else {
-                nuevosParaCompartir.push(compartido);
-            }
-        }
-        if (nuevosParaCompartir.length > 0) {
-            return await carpetaRepository.compartirCarpeta(id, nuevosParaCompartir);
-        }
+        const carpetaExistente = await carpetaRepository.findByIdSinEstado(id);
+        if (!carpetaExistente) throw new Error('Carpeta no encontrada.');
 
-        return true;
+        // Calculamos la ruta absoluta que afectará a los hijos
+        const rutaPadre = `${carpetaExistente.path}${carpetaExistente.nombre}/`;
+        const archivoService = require('./archivo.service');
+        const session = await mongoose.startSession();
+
+        try {
+            await session.withTransaction(async () => {
+                for (const compartido of datosCompartir) {
+                    if (!compartido.usuarioId || !compartido.permiso) {
+                        throw new Error('Faltan datos requeridos para compartir la carpeta.');
+                    }
+                    if (!mongoose.Types.ObjectId.isValid(id) || !mongoose.Types.ObjectId.isValid(compartido.usuarioId)) {
+                        throw new Error('ID de carpeta o usuario inválido.');
+                    }
+
+                    // 1. Actualizamos a la carpeta padre actual
+                    const yaExiste = await carpetaRepository.validarCompartidoCon(id, compartido.usuarioId);
+                    if (yaExiste) {
+                        await carpetaRepository.cambiarPermisoDeCompartido(id, compartido.usuarioId, compartido.permiso, session);
+                    } else {
+                        await carpetaRepository.compartirCarpeta(id, [compartido], session); // Asumiendo que adaptaste este método para recibir session
+                    }
+
+                    // 2. Propagamos la herencia a descendientes (Carpetas y Archivos)
+                    // Primero limpiamos rastros viejos de ese usuario
+                    await carpetaRepository.removerPermisoDescendientes(rutaPadre, compartido.usuarioId, session);
+                    await archivoService.removerPermisoDescendientes(rutaPadre, compartido.usuarioId, session);
+
+                    // Luego inyectamos el nuevo permiso heredado
+                    await carpetaRepository.agregarPermisoDescendientes(rutaPadre, compartido, session);
+                    await archivoService.agregarPermisoDescendientes(rutaPadre, compartido, session);
+                }
+            });
+            return true;
+        } catch (error) {
+            console.error("Error al propagar compartición:", error);
+            throw error;
+        } finally {
+            await session.endSession();
+        }
     }
 
     async cambiarPermisoDeCompartido(id, datosCompartido) {
-        if (!datosCompartido.usuarioId || !datosCompartido.permiso) {
-            throw new Error('Faltan datos requeridos para cambiar el permiso.');
-        }
-
-        if (!mongoose.Types.ObjectId.isValid(id) || !mongoose.Types.ObjectId.isValid(datosCompartido.usuarioId)) {
-            throw new Error('ID de carpeta o usuario inválido.');
-        }
-        return await carpetaRepository.cambiarPermisoDeCompartido(id, datosCompartido.usuarioId, datosCompartido.permiso);
+        // En esta arquitectura, cambiar el permiso desde la raíz es exactamente el mismo flujo que compartir
+        // Por lo tanto, podemos reutilizar el método superior para aplicar la cascada.
+        return await this.compartirCarpeta(id, [datosCompartido]);
     }
 
     async eliminarCompartido(id, usuarioId) {
         if (!mongoose.Types.ObjectId.isValid(id) || !mongoose.Types.ObjectId.isValid(usuarioId)) {
             throw new Error('ID de carpeta o usuario inválido.');
         }
-        return await carpetaRepository.eliminarCompartido(id, usuarioId);
+
+        const carpetaExistente = await carpetaRepository.findByIdSinEstado(id);
+        if (!carpetaExistente) throw new Error('Carpeta no encontrada.');
+
+        const rutaPadre = `${carpetaExistente.path}${carpetaExistente.nombre}/`;
+        const archivoService = require('./archivo.service');
+        const session = await mongoose.startSession();
+
+        try {
+            await session.withTransaction(async () => {
+                // 1. Quitamos permiso al padre
+                await carpetaRepository.eliminarCompartido(id, usuarioId, session);
+
+                // 2. Quitamos permiso a toda la descendencia
+                await carpetaRepository.removerPermisoDescendientes(rutaPadre, usuarioId, session);
+                await archivoService.removerPermisoDescendientes(rutaPadre, usuarioId, session);
+            });
+            return true;
+        } catch (error) {
+            console.error("Error al revocar permisos en cascada:", error);
+            throw error;
+        } finally {
+            await session.endSession();
+        }
     }
 }
 

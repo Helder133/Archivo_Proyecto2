@@ -1,4 +1,5 @@
 const dbInstance = require('./src/config/database');
+const { permisosEnum } = require('./src/models/enums.enum.js');
 const { ObjectId } = require('mongodb');
 const { Readable } = require('stream');
 const bcrypt = require('bcrypt'); // Importamos bcrypt
@@ -53,7 +54,7 @@ async function runSeed() {
         const archivosAGuardar = [];
         const bitacoras = [];
 
-        console.log("Generando 50 archivos (esto puede tomar un momento)...");
+        console.log("Generando 50 archivos (esto puede tomar un momento)...")
         for (let i = 1; i <= 50; i++) {
             const tipoArchivo = i % 2 === 0 ? '.md' : '.txt';
             const nombreArchivo = `documento_${i}${tipoArchivo}`;
@@ -62,7 +63,7 @@ async function runSeed() {
             const fileId = await subirArchivoAGridFs(nombreArchivo, contenidoDummy);
 
             let compartido = [];
-            const permiso = i % 3 === 0 ? "lectura" : "editar";
+            const permiso = i % 3 === 0 ? permisosEnum.LECTURA : permisosEnum.EDITAR;
             if (i <= 20) {
                 compartido = [{ usuarioId: idAuxiliar, permiso: permiso }];
             }

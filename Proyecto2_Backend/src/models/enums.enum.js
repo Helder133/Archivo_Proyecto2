@@ -17,8 +17,8 @@ const tipoRecursoEnum = Object.freeze({
 
 const permisosEnum = Object.freeze({
     LECTURA: 'lectura',
-    ESCRITURA: 'editar',
-    ELIMINACION: 'comentar'
+    EDITAR: 'editar',
+    COMENTAR: 'comentar'
 });
 
 module.exports = { usuarioEnum, bitacoraEnum, tipoRecursoEnum, permisosEnum };

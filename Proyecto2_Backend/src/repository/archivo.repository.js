@@ -20,7 +20,7 @@ class ArchivoRepository {
                     }
                 }
             ],
-            { session }
+            { session, updatePipeline: true }
         );
     }
 
@@ -68,6 +68,30 @@ class ArchivoRepository {
         // Eliminar los registros de archivos de GridFS.
         await db.collection('archivos_fisicos.files').deleteMany(
             { _id: { $in: ids } },
+            { session }
+        );
+    }
+
+    async agregarPermisoDescendientes(pathPadre, datosCompartido, session) {
+        const db = dbInstance.getDb();
+
+        const datosParseados = {
+            usuarioId: new ObjectId(datosCompartido.usuarioId),
+            permiso: datosCompartido.permiso
+        };
+
+        return await db.collection(archivoCollectionName).updateMany(
+            { path: { $regex: `^${pathPadre}` } },
+            { $push: { compartidoCon: datosParseados } },
+            { session }
+        );
+    }
+
+    async removerPermisoDescendientes(pathPadre, usuarioId, session) {
+        const db = dbInstance.getDb();
+        return await db.collection(archivoCollectionName).updateMany(
+            { path: { $regex: `^${pathPadre}` } },
+            { $pull: { compartidoCon: { usuarioId: new ObjectId(usuarioId) } } },
             { session }
         );
     }

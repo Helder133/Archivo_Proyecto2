@@ -15,6 +15,15 @@ class ArchivoService {
         // Finalmente, eliminamos los documentos de la colección de archivos
         return await archivoRepository.eliminarPorPath(path, session);
     }
+
+    async agregarPermisoDescendientes(pathPadre, datosCompartido, session) {
+        return await archivoRepository.agregarPermisoDescendientes(pathPadre, datosCompartido, session);
+    }
+
+    async removerPermisoDescendientes(pathPadre, usuarioId, session) {
+        return await archivoRepository.removerPermisoDescendientes(pathPadre, usuarioId, session);
+    }
+
 }
 
 module.exports = new ArchivoService();

@@ -32,6 +32,7 @@ class CarpetaRepository {
     }
 
     async update(id, data, session = null) {
+        console.log('Actualizando carpeta con ID:', id, 'con datos:', data);
         if (!mongoose.Types.ObjectId.isValid(id)) return null;
         const options = session ? { session } : {}; // Inyectamos la sesión si existe
         const result = await CarpetaModel.updateOne({ _id: id }, { $set: data }, options);
@@ -54,7 +55,7 @@ class CarpetaRepository {
                     }
                 }
             ],
-            { session }
+            { session, updatePipeline: true }
         );
     }
 
@@ -62,7 +63,8 @@ class CarpetaRepository {
         if (!mongoose.Types.ObjectId.isValid(id)) return null;
         const result = await CarpetaModel.updateOne(
             { _id: id },
-            [{ $set: { estado: { $not: "$estado" } } }]
+            [{ $set: { estado: { $not: "$estado" } } }],
+            { updatePipeline: true }
         );
         return result.modifiedCount > 0;
     }
@@ -93,32 +95,52 @@ class CarpetaRepository {
         return result !== null;
     }
 
-    async compartirCarpeta(id, datosCompartir) {
+    async compartirCarpeta(id, datosCompartir, session) {
         if (!mongoose.Types.ObjectId.isValid(id)) return null;
         const result = await CarpetaModel.updateOne(
             { _id: id },
-            { $addToSet: { compartidoCon: { $each: datosCompartir } } }
+            { $addToSet: { compartidoCon: { $each: datosCompartir } } },
+            { session }
         );
         return result.modifiedCount > 0;
     }
 
-    async cambiarPermisoDeCompartido(id, usuarioId, nuevoPermiso) {
+    async cambiarPermisoDeCompartido(id, usuarioId, nuevoPermiso, session) {
         if (!mongoose.Types.ObjectId.isValid(id) || !mongoose.Types.ObjectId.isValid(usuarioId)) return null;
         const result = await CarpetaModel.updateOne(
             { _id: id, "compartidoCon.usuarioId": usuarioId },
-            { $set: { "compartidoCon.$.permiso": nuevoPermiso } }
+            { $set: { "compartidoCon.$.permiso": nuevoPermiso } },
+            { session }
         );
         return result.modifiedCount > 0;
     }
 
-    async eliminarCompartido(id, usuarioId) {
+    async eliminarCompartido(id, usuarioId, session) {
         if (!mongoose.Types.ObjectId.isValid(id)) return null;
         const result = await CarpetaModel.updateOne(
             { _id: id },
-            { $pull: { compartidoCon: { usuarioId: usuarioId } } }
+            { $pull: { compartidoCon: { usuarioId: usuarioId } } },
+            { session }
         );
         return result.modifiedCount > 0;
     }
+
+    async agregarPermisoDescendientes(pathPadre, datosCompartir, session) {
+        return await CarpetaModel.updateMany(
+            { path: { $regex: `^${pathPadre}` } },
+            { $addToSet: { compartidoCon: { $each: datosCompartir } } },
+            { session }
+        );
+    }
+
+    async removerPermisoDescendientes(pathPadre, usuarioId, session) {
+        return await CarpetaModel.updateMany(
+            { path: { $regex: `^${pathPadre}` } },
+            { $pull: { compartidoCon: { usuarioId: usuarioId } } },
+            { session }
+        );
+    }
+
 }
 
 module.exports = new CarpetaRepository();
