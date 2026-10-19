@@ -11,5 +11,10 @@ router.use(require('./usuario.route'));
 // Rutas de carpeta
 router.use(require('./carpeta.route'));
 
+// Rutas de archivo
+router.use(require('./archivo.route'));
+
+// Rutas de bitacora
+router.use(require('./bitacora.route'));
 
 module.exports = router;

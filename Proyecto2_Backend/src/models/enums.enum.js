@@ -7,12 +7,20 @@ const bitacoraEnum = Object.freeze({
     CREACION: 'creacion',
     MODIFICACION: 'modificacion',
     ELIMINACION: 'eliminacion',
-    INICIO_SESION: 'inicio_sesion'
+    INICIO_SESION: 'inicio_sesion',
+    CIERRE_SESION: 'cierre_sesion',
+    COMPARTIR: 'compartir',
+    DESCARGA: 'descarga',
+    CAMBIO_PERMISO: 'cambio_permiso',
+    CONSULTAR_REGISTROS: 'consultar_registros',
+    RESTAURAR: 'restaurar'
 });
 
-const tipoRecursoEnum = Object.freeze({
+const moduloAfectado = Object.freeze({
     ARCHIVO: 'archivo',
-    CARPETA: 'carpeta'
+    CARPETA: 'carpeta',
+    USUARIO: 'usuario',
+    BITACORA: 'bitacora'
 });
 
 const permisosEnum = Object.freeze({
@@ -21,4 +29,9 @@ const permisosEnum = Object.freeze({
     COMENTAR: 'comentar'
 });
 
-module.exports = { usuarioEnum, bitacoraEnum, tipoRecursoEnum, permisosEnum };
+const tipoArchivoEnum = Object.freeze({
+    TEXTO: '.txt',
+    MARKDOWN: '.md',
+});
+
+module.exports = { usuarioEnum, bitacoraEnum, moduloAfectado, permisosEnum, tipoArchivoEnum };

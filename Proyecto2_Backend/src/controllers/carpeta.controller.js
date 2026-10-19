@@ -74,8 +74,8 @@ class CarpetaController {
 
     async eliminarCarpeta(req, res) {
         try {
-            const { path } = req.params;
-            await carpetaService.eliminarCarpetaCompleta(path);
+            const { id } = req.params;
+            await carpetaService.eliminarCarpetaCompleta(id);
             res.json({ message: 'Carpeta eliminada correctamente' });
         } catch (error) {
             res.status(400).json({ error: error.message });
@@ -105,6 +105,7 @@ class CarpetaController {
     async eliminarCompartido(req, res) {
         try {
             const { id, usuarioId } = req.body;
+            console.log('Datos recibidos para eliminar compartido:', { id, usuarioId });
             await carpetaService.eliminarCompartido(id, usuarioId);
             res.json({ message: 'Usuario eliminado de compartido correctamente' });
         } catch (error) {

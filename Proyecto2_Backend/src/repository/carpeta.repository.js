@@ -31,6 +31,10 @@ class CarpetaRepository {
         return await CarpetaModel.find({ estado: false }).lean();
     }
 
+    async findByNombreAndPath(nombre, path) {
+        return await CarpetaModel.findOne({ nombre: nombre, path: path, estado: true }).lean();
+    }
+
     async update(id, data, session = null) {
         console.log('Actualizando carpeta con ID:', id, 'con datos:', data);
         if (!mongoose.Types.ObjectId.isValid(id)) return null;
@@ -59,14 +63,23 @@ class CarpetaRepository {
         );
     }
 
-    async toggleEstado(id) {
+    async actualizarEstado(id, nuevoEstado, session) {
         if (!mongoose.Types.ObjectId.isValid(id)) return null;
+        const options = session ? { session } : {};
         const result = await CarpetaModel.updateOne(
             { _id: id },
-            [{ $set: { estado: { $not: "$estado" } } }],
-            { updatePipeline: true }
+            { $set: { estado: nuevoEstado } },
+            options
         );
         return result.modifiedCount > 0;
+    }
+
+    async cambiarEstadoDescendientes(rutaPadre, nuevoEstado, session) {
+        return await CarpetaModel.updateMany(
+            { path: { $regex: `^${rutaPadre}` } },
+            { $set: { estado: nuevoEstado } },
+            { session }
+        );
     }
 
     async eliminarPorPath(path, session) {
@@ -128,7 +141,7 @@ class CarpetaRepository {
     async agregarPermisoDescendientes(pathPadre, datosCompartir, session) {
         return await CarpetaModel.updateMany(
             { path: { $regex: `^${pathPadre}` } },
-            { $addToSet: { compartidoCon: { $each: datosCompartir } } },
+            { $push: { compartidoCon: datosCompartir } },
             { session }
         );
     }

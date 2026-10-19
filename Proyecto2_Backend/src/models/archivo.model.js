@@ -1,16 +1,69 @@
-class Archivo {
-    constructor(datos = {}) {
-        this.id = datos.id || null;
-        this.nombre = datos.nombre || '';
-        this.tipo = datos.tipo || '';
-        this.path = datos.path || '';
-        this.usuarioId = datos.usuarioId || null;
-        this.archivoGridFsId = datos.archivoGridFsId || null;
-        this.fechaCreacion = datos.fechaCreacion || new Date();
-        this.fechaModificacion = datos.fechaModificacion || null;
-        this.compartidoCon = datos.compartidoCon || [];
-        this.estado = datos.estado || true;
-    }
-}
+const mongosee = require('mongoose');
+const { permisosEnum, tipoArchivoEnum } = require('../models/enums.enum.js');
 
-module.exports = { Archivo };
+const compartidoSchema = new mongosee.Schema({
+    usuarioId: {
+        type: mongosee.Schema.Types.ObjectId,
+        ref: 'usuario',
+        required: true
+    },
+    permiso: {
+        type: String,
+        enum: Object.values(permisosEnum),
+        required: true
+    }
+}, { _id: false });
+
+const archivoSchema = new mongosee.Schema(
+    {
+        nombre: {
+            type: String,
+            required: true,
+            trim: true
+        },
+        tipo: {
+            type: String,
+            enum: tipoArchivoEnum,
+            required: true,
+            trim: true
+        },
+        path: {
+            type: String,
+            required: true,
+            default: '/',
+        },
+        usuarioId: {
+            type: mongosee.Schema.Types.ObjectId,
+            ref: 'usuario',
+            required: true
+        },
+        archivoGridFsId: {
+            type: mongosee.Schema.Types.ObjectId,
+            required: true
+        },
+        fechaCreacion: {
+            type: Date,
+            default: Date.now
+        },
+        fechaModificacion: {
+            type: Date,
+            default: Date.now
+        },
+        compartidoCon: {
+            type: [compartidoSchema],
+            default: []
+        },
+        estado: {
+            type: Boolean,
+            default: true
+        }
+    },
+    {
+        collection: 'archivo',
+        versionKey: false
+    }
+);
+
+const ArchivoModel = mongosee.model('archivo', archivoSchema);
+
+module.exports = ArchivoModel;

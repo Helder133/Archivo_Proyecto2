@@ -1,15 +1,43 @@
-const { bitacoraEnum, tipoRecursoEnum } = require('./enums.enum');
+const mongoose = require('mongoose');
+const { bitacoraEnum, moduloAfectado } = require('../models/enums.enum'); // Asegúrate de la ruta correcta
 
-class Bitacora {
-    constructor(datos = {}) {
-        this.id = datos.id || null;
-        this.usuarioId = datos.usuarioId || null;
-        this.accion = datos.accion || bitacoraEnum.CREACION;
-        this.recursoId = datos.recursoId || null;
-        this.tipoRecurso = datos.tipoRecurso || tipoRecursoEnum.ARCHIVO;
-        this.nombreHistorico = datos.nombreHistorico || '';
-        this.fecha = datos.fecha || new Date();
+const bitacoraSchema = new mongoose.Schema(
+    {
+        usuarioId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Usuario',
+            required: true
+        },
+        accion: {
+            type: String,
+            enum: Object.values(bitacoraEnum),
+            required: true
+        },
+        recursoId: {
+            type: mongoose.Schema.Types.ObjectId,
+            default: null // Puede ser null para acciones como el LOGIN donde no hay un recurso afectado per se
+        },
+        moduloAfectado: {
+            type: String,
+            enum: Object.values(moduloAfectado),
+            required: true
+        },
+        nombreHistorico: {
+            type: String,
+            required: true,
+            trim: true
+        },
+        fecha: {
+            type: Date,
+            default: Date.now
+        }
+    },
+    {
+        collection: 'bitacora',
+        versionKey: false
     }
-}
+);
 
-module.exports = { Bitacora };
+const BitacoraModel = mongoose.model('bitacora', bitacoraSchema);
+
+module.exports = BitacoraModel;

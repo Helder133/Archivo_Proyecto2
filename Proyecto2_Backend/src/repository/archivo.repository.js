@@ -1,11 +1,101 @@
+const mongoose = require('mongoose');
+const ArchivoModel = require('../models/archivo.model');
 const dbInstance = require('../config/database');
-const archivoCollectionName = 'archivo';
+const { Readable } = require('stream');
 
 class ArchivoRepository {
 
+    async existeNombreEnLaMismaPath(nombre, path) {
+        const result = await ArchivoModel.exists({ nombre, path });
+        return result !== null;
+    }
+
+    async create(archivo) {
+        const nuevoArchivo = await ArchivoModel.create(archivo);
+        return nuevoArchivo._id.toString();
+    }
+
+    async subirAGridFs(nombreArchivo, buffer) {
+        const bucket = dbInstance.getBucket();
+
+        return new Promise((resolve, reject) => {
+            const uploadStream = bucket.openUploadStream(nombreArchivo);
+            const readableStream = Readable.from(buffer); // Convertimos el buffer en un stream
+
+            readableStream.pipe(uploadStream)
+                .on('error', reject)
+                .on('finish', () => resolve(uploadStream.id)); // Retorna el ObjectId de GridFS
+        });
+    }
+
+    async findAll() {
+        return await ArchivoModel.find({ estado: true }).lean();
+    }
+
+    async findById(id) {
+        if (!mongoose.Types.ObjectId.isValid(id)) return null;
+        return await ArchivoModel.findOne({ _id: id, estado: true }).lean();
+    }
+
+    async findByNombreCoincidencia(coincidencia) {
+        return await ArchivoModel.find({ nombre: coincidencia, estado: true }).lean();
+    }
+
+    async findByExtension(extension) {
+        return await ArchivoModel.find({ tipo: extension, estado: true }).lean();
+    }
+
+    async findPapeleria() {
+        return await ArchivoModel.find({ estado: false }).lean();
+    }
+
+    // --- MÉTODO PARA DESCARGAR/LEER DE GRIDFS ---
+    async descargarDeGridFs(gridFsId) {
+        const bucket = dbInstance.getBucket();
+        const objectId = typeof gridFsId === 'string' ? new mongoose.Types.ObjectId(gridFsId) : gridFsId;
+        return bucket.openDownloadStream(objectId);
+    }
+
+    async update(id, data, session = null) {
+        if (!mongoose.Types.ObjectId.isValid(id)) return null;
+        const options = session ? { session } : {};
+        const result = await ArchivoModel.updateOne({ _id: id }, { $set: data }, options);
+        return result.modifiedCount > 0;
+    }
+
+    async findByIdSinEstado(id) {
+        if (!mongoose.Types.ObjectId.isValid(id)) return null;
+        return await ArchivoModel.findById(id).lean();
+    }
+
+    async cambiarEstadoDeArchivo(id) {
+        if (!mongoose.Types.ObjectId.isValid(id)) return null;
+        const result = await ArchivoModel.updateOne(
+            { _id: id },
+            [{ $set: { estado: { $not: "$estado" } } }],
+            { updatePipeline: true }
+        );
+        return result.modifiedCount > 0;
+    }
+
+    async eliminarPorId(id, session = null) {
+        if (!mongoose.Types.ObjectId.isValid(id)) return null;
+        const options = session ? { session } : {};
+        const result = await ArchivoModel.deleteOne({ _id: id }, options);
+        return result.deletedCount > 0;
+    }
+
+    // ----------------------------- Metodos que son llamadaos si ocurre un cambio desde una carpeta ---------------------------------
+    async cambiarEstadoDescendientes(pathPadre, nuevoEstado, session) {
+        return await ArchivoModel.updateMany(
+            { path: { $regex: `^${pathPadre}` } },
+            { $set: { estado: nuevoEstado } },
+            { session }
+        );
+    }
+
     async actualizarPaths(pathAnterior, pathNueva, session) {
-        const db = dbInstance.getDb();
-        return await db.collection(archivoCollectionName).updateMany(
+        return await ArchivoModel.updateMany(
             { path: { $regex: `^${pathAnterior}` } },
             [
                 {
@@ -25,26 +115,17 @@ class ArchivoRepository {
     }
 
     async eliminarPorPath(path, session) {
-        const db = dbInstance.getDb();
-        return await db.collection(archivoCollectionName).deleteMany(
-            {
-                path: { $regex: `^${path}` }
-            },
+        return await ArchivoModel.deleteMany(
+            { path: { $regex: `^${path}` } },
             { session }
         );
     }
 
     async obtenerIdsGridFSPorPath(path, session) {
-        const db = dbInstance.getDb();
-
-        const archivos = await db.collection(archivoCollectionName).find(
+        const archivos = await ArchivoModel.find(
             { path: { $regex: `^${path}` } },
-            {
-                projection: { archivoGridFsId: 1 },
-                session
-            }
-        )
-            .toArray();
+            { archivoGridFsId: 1 }
+        ).session(session).lean();
 
         return archivos
             .map(archivo => archivo.archivoGridFsId)
@@ -53,12 +134,11 @@ class ArchivoRepository {
 
     // Método para eliminar archivos binarios de GridFS por sus IDs
     async eliminarBinariosGridFS(ids, session) {
-        if (ids.length === 0) {
+        if (!ids || ids.length === 0) {
             return;
         }
 
         const db = dbInstance.getDb();
-
         // Eliminar los fragmentos binarios.
         await db.collection('archivos_fisicos.chunks').deleteMany(
             { files_id: { $in: ids } },
@@ -73,25 +153,17 @@ class ArchivoRepository {
     }
 
     async agregarPermisoDescendientes(pathPadre, datosCompartido, session) {
-        const db = dbInstance.getDb();
-
-        const datosParseados = {
-            usuarioId: new ObjectId(datosCompartido.usuarioId),
-            permiso: datosCompartido.permiso
-        };
-
-        return await db.collection(archivoCollectionName).updateMany(
+        return await ArchivoModel.updateMany(
             { path: { $regex: `^${pathPadre}` } },
-            { $push: { compartidoCon: datosParseados } },
+            { $push: { compartidoCon: datosCompartido } },
             { session }
         );
     }
 
     async removerPermisoDescendientes(pathPadre, usuarioId, session) {
-        const db = dbInstance.getDb();
-        return await db.collection(archivoCollectionName).updateMany(
+        return await ArchivoModel.updateMany(
             { path: { $regex: `^${pathPadre}` } },
-            { $pull: { compartidoCon: { usuarioId: new ObjectId(usuarioId) } } },
+            { $pull: { compartidoCon: { usuarioId: usuarioId } } },
             { session }
         );
     }

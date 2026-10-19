@@ -2,6 +2,7 @@ const carpetaRepository = require('../repository/carpeta.repository');
 const mongoose = require('mongoose');
 
 class CarpetaService {
+
     async createCarpeta(carpeta) {
         carpeta.path = carpeta.path || '/';
         if ((!carpeta.nombre || carpeta.nombre.trim() === '')
@@ -20,15 +21,61 @@ class CarpetaService {
             throw new Error(`Ya existe una carpeta con el nombre "${carpeta.nombre}" en la path "${carpeta.path}".`);
         }
 
+        // ---LÓGICA DE HERENCIA ---
+        let permisosHeredados = carpeta.compartidoCon || [];
+
+        if (carpeta.path !== '/') {
+            const partes = carpeta.path.split('/').filter(p => p !== '');
+            if (partes.length > 0) {
+                const nombreParent = partes.pop();
+                const pathParent = partes.length > 0 ? `/${partes.join('/')}/` : '/';
+
+                const carpetaPadre = await carpetaRepository.findByNombreAndPath(nombreParent, pathParent);
+
+                if (carpetaPadre) {
+                    // 1. Clonar los permisos del padre
+                    permisosHeredados = carpetaPadre.compartidoCon.filter(
+                        p => p.usuarioId.toString() !== carpeta.usuarioId.toString()
+                    );
+
+                    // 2. Si un usuario invitado está creando esta carpeta, el dueño original debe tener acceso
+                    console.log(carpetaPadre.usuarioId.toString(), carpeta.usuarioId.toString())
+                    console.log(carpetaPadre.usuarioId.toString() !== carpeta.usuarioId.toString())
+                    if (carpetaPadre.usuarioId.toString() !== carpeta.usuarioId.toString()) {
+
+                        // Verificamos que el dueño original no esté ya en el arreglo para no duplicar
+                        const dueñoYaExiste = permisosHeredados.some(
+                            p => p.usuarioId.toString() === carpetaPadre.usuarioId.toString()
+                        );
+                        console.log('Dueño ya existe:', dueñoYaExiste);
+                        if (!dueñoYaExiste) {
+                            permisosHeredados.push({
+                                usuarioId: carpetaPadre.usuarioId,
+                                permiso: 'edicion' // Puedes usar tu enum permisosEnum.ESCRITURA si lo importas
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
         const newCarpeta = {
             nombre: carpeta.nombre,
             path: carpeta.path,
             usuarioId: carpeta.usuarioId,
             estado: true,
-            compartidoCon: carpeta.compartidoCon || []
+            compartidoCon: permisosHeredados
         }
 
         return await carpetaRepository.create(newCarpeta);
+    }
+
+    async findByNombreAndPath(nombre, path) {
+        const carpeta = await carpetaRepository.findByNombreAndPath(nombre, path);
+        if (!carpeta) {
+            throw new Error(`No se encontró la carpeta con nombre: ${nombre} y path: ${path}`);
+        }
+        return carpeta;
     }
 
     async findCarpetaById(id) {
@@ -114,18 +161,29 @@ class CarpetaService {
         }
     }
 
-    async eliminarCarpetaCompleta(rutaCompleta) {
+    async eliminarCarpetaCompleta(id) {
+        // 1. Validamos que exista por ID (y de paso obtenemos sus datos)
+        const carpetaExistente = await carpetaRepository.findByIdSinEstado(id);
+        if (!carpetaExistente) {
+            throw new Error('Carpeta no encontrada o ID inválido.');
+        }
+
+        // 2. Armamos la ruta completa a partir de la base de datos, no del frontend
+        const rutaCompleta = `${carpetaExistente.path}${carpetaExistente.nombre}/`;
+
         const session = await mongoose.startSession();
 
         try {
             await session.withTransaction(async () => {
                 const archivoService = require('./archivo.service');
+
+                // 3. Destruimos la descendencia y a la carpeta misma con el Regex
                 await archivoService.eliminarArchivosPorPath(rutaCompleta, session);
                 await carpetaRepository.eliminarPorPath(rutaCompleta, session);
             });
             return true;
         } catch (error) {
-            console.error("Error al eliminar carpeta:", error);
+            console.error("Error al eliminar carpeta en cascada:", error);
             throw error;
         } finally {
             await session.endSession();
@@ -135,12 +193,40 @@ class CarpetaService {
     async actualizarEstadoCarpeta(id) {
         const carpetaExistente = await carpetaRepository.findByIdSinEstado(id);
         if (!carpetaExistente) {
-            throw new Error(`No se encontró la carpeta con ID: ${id}`);
+            throw new Error(`No se encontró la carpeta seleccionada.`);
         }
-        return await carpetaRepository.toggleEstado(id);
+
+        // Calculamos cuál será el nuevo estado (el inverso del actual)
+        const nuevoEstado = !carpetaExistente.estado;
+
+        // Calculamos la ruta letal que afectará a los hijos
+        const rutaPadre = `${carpetaExistente.path}${carpetaExistente.nombre}/`;
+
+        const archivoService = require('./archivo.service');
+        const session = await mongoose.startSession();
+
+        try {
+            await session.withTransaction(async () => {
+                // 1. Actualizamos explícitamente a la carpeta padre
+                await carpetaRepository.actualizarEstado(id, nuevoEstado, session);
+
+                // 2. Propagamos el mismo estado a todas las subcarpetas
+                await carpetaRepository.cambiarEstadoDescendientes(rutaPadre, nuevoEstado, session);
+
+                // 3. Propagamos el mismo estado a todos los archivos
+                await archivoService.cambiarEstadoDescendientes(rutaPadre, nuevoEstado, session);
+            });
+            return nuevoEstado;
+        } catch (error) {
+            console.error("Error al cambiar estado en cascada:", error);
+            throw error;
+        } finally {
+            await session.endSession();
+        }
     }
 
     async compartirCarpeta(id, datosCompartir) {
+        console.log('Iniciando proceso de compartir carpeta con ID:', id, 'y datos:', datosCompartir);
         const carpetaExistente = await carpetaRepository.findByIdSinEstado(id);
         if (!carpetaExistente) throw new Error('Carpeta no encontrada.');
 
@@ -153,6 +239,8 @@ class CarpetaService {
             await session.withTransaction(async () => {
                 for (const compartido of datosCompartir) {
                     if (!compartido.usuarioId || !compartido.permiso) {
+                        console.log('campartido:', compartido);
+                        console.log(!compartido.usuarioId || !compartido.permiso)
                         throw new Error('Faltan datos requeridos para compartir la carpeta.');
                     }
                     if (!mongoose.Types.ObjectId.isValid(id) || !mongoose.Types.ObjectId.isValid(compartido.usuarioId)) {
@@ -187,9 +275,10 @@ class CarpetaService {
     }
 
     async cambiarPermisoDeCompartido(id, datosCompartido) {
-        // En esta arquitectura, cambiar el permiso desde la raíz es exactamente el mismo flujo que compartir
-        // Por lo tanto, podemos reutilizar el método superior para aplicar la cascada.
-        return await this.compartirCarpeta(id, [datosCompartido]);
+        const arregloACompartir = Array.isArray(datosCompartido) ? datosCompartido : [datosCompartido];
+
+        // Reutilizamos el método superior para aplicar la cascada sin romper la estructura
+        return await this.compartirCarpeta(id, arregloACompartir);
     }
 
     async eliminarCompartido(id, usuarioId) {
