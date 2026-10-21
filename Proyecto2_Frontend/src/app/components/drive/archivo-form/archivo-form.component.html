@@ -1,0 +1,42 @@
+<div class="card shadow-sm border-secondary mb-4">
+    <div class="card-header bg-dark text-white border-secondary d-flex justify-content-between align-items-center">
+        <h6 class="mb-0"><i class="bi bi-cloud-arrow-up me-2"></i>{{ archivoAEditar ? 'Renombrar Archivo' : 'Subir
+            Archivo' }}</h6>
+        <button type="button" class="btn-close btn-close-white" (click)="formCancel.emit()"></button>
+    </div>
+
+    @if (backendError) {
+    <div class="alert alert-danger m-3 py-2"><i class="bi bi-exclamation-triangle me-2"></i>{{ backendError }}</div>
+    }
+
+    <div class="card-body bg-dark text-light">
+        <form [formGroup]="archivoForm" (ngSubmit)="onSubmit()">
+
+            <!-- Input de archivo (Solo visible al crear) -->
+            @if (!archivoAEditar) {
+            <div class="mb-3">
+                <label class="form-label">Seleccionar documento (.txt, .md)</label>
+                <input type="file" class="form-control bg-dark text-light border-secondary" accept=".txt,.md"
+                    (change)="onFileChange($event)">
+                @if (!archivoSeleccionado && archivoForm.touched) {
+                <small class="text-danger">Debes seleccionar un archivo.</small>
+                }
+            </div>
+            }
+
+            <div class="mb-3">
+                <label class="form-label">Nombre del archivo (sin extensión)</label>
+                <input type="text" class="form-control bg-dark text-light border-secondary" formControlName="nombre"
+                    [class.is-invalid]="archivoForm.get('nombre')?.invalid && archivoForm.get('nombre')?.touched">
+            </div>
+
+            <div class="d-flex justify-content-end gap-2">
+                <button type="button" class="btn btn-outline-secondary btn-sm"
+                    (click)="formCancel.emit()">Cancelar</button>
+                <button type="submit" class="btn btn-primary btn-sm">
+                    <i class="bi bi-cloud-upload me-1"></i> {{ archivoAEditar ? 'Guardar Cambios' : 'Subir' }}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

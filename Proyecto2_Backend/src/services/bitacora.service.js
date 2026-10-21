@@ -1,4 +1,6 @@
 const bitacoraRepository = require('../repository/bitacora.repository');
+const permisosService = require('./permisos.service');
+const { bitacoraEnum, moduloAfectado } = require('../models/enums.enum.js');
 
 class BitacoraService {
     
@@ -18,7 +20,9 @@ class BitacoraService {
         return await bitacoraRepository.create(nuevaBitacora, session);
     }
 
-    async obtenerHistorialCompleto() {
+    async obtenerHistorialCompleto(usuarioId) {
+        await permisosService.verificarSiEsAdmin(usuarioId);
+        this.registrarAccion(usuarioId, bitacoraEnum.CONSULTAR_REGISTROS, moduloAfectado.BITACORA, 'Consulta de historial completo de la bitácora');
         return await bitacoraRepository.findAll();
     }
 }

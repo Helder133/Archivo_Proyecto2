@@ -1,0 +1,84 @@
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">
+            <i class="bi bi-journal-text me-2"></i>Bitácora de Auditoría
+        </h2>
+        <button class="btn btn-outline-info" (click)="cargarHistorial()" [disabled]="cargando()">
+            <i class="bi bi-arrow-clockwise me-1"></i> Actualizar
+        </button>
+    </div>
+
+    @if (error()) {
+    <div class="alert alert-danger d-flex align-items-center">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        <div>{{ error() }}</div>
+    </div>
+    }
+
+    <div class="card shadow-sm border-secondary">
+        <div class="card-body p-0 bg-dark text-light">
+            <div class="table-responsive">
+                <table class="table table-dark table-striped table-hover mb-0 align-middle">
+                    <thead class="table-secondary">
+                        <tr>
+                            <th scope="col">Fecha y Hora</th>
+                            <th scope="col">Usuario</th>
+                            <th scope="col">Acción</th>
+                            <th scope="col">Módulo</th>
+                            <th scope="col">Detalle / Recurso</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (cargando()) {
+                        <tr>
+                            <td colspan="5" class="text-center py-5">
+                                <div class="spinner-border text-primary" role="status"></div>
+                                <p class="mt-2 text-secondary">Cargando registros de auditoría...</p>
+                            </td>
+                        </tr>
+                        } @else {
+                        @for (registro of registros(); track registro._id) {
+                        <tr>
+                            <!-- Pipe de Angular para formato legible de fecha -->
+                            <td class="text-nowrap">{{ registro.fecha | date:'dd/MM/yyyy HH:mm:ss' }}</td>
+
+                            <td>
+                                <div class="fw-bold">{{ registro.usuarioNombre }}</div>
+                                <div class="small text-secondary">{{ registro.usuarioEmail }}</div>
+                            </td>
+
+                            <td>
+                                <!-- Color de la insignia dependiendo si es lectura o modificación -->
+                                <span class="badge"
+                                    [class.bg-success]="registro.accion === 'creacion' || registro.accion === 'inicio_sesion'"
+                                    [class.bg-danger]="registro.accion === 'eliminacion' || registro.accion === 'cierre_sesion'"
+                                    [class.bg-warning]="registro.accion === 'modificacion' || registro.accion === 'cambio_permiso'"
+                                    [class.bg-info]="registro.accion === 'consultar_registros' || registro.accion === 'descarga'"
+                                    [class.bg-secondary]="registro.accion === 'compartir' || registro.accion === 'restauracion'">
+                                    {{ registro.accion | uppercase }}
+                                </span>
+                            </td>
+
+                            <td>
+                                <span class="badge border border-secondary text-light bg-dark">
+                                    {{ registro.moduloAfectado | uppercase }}
+                                </span>
+                            </td>
+
+                            <td>{{ registro.nombreHistorico }}</td>
+                        </tr>
+                        } @empty {
+                        <tr>
+                            <td colspan="5" class="text-center py-5 text-secondary">
+                                <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                                No hay registros de actividad en el sistema.
+                            </td>
+                        </tr>
+                        }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

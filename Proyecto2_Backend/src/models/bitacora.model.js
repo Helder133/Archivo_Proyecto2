@@ -5,7 +5,7 @@ const bitacoraSchema = new mongoose.Schema(
     {
         usuarioId: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: 'Usuario',
+            ref: 'usuario',
             required: true
         },
         accion: {

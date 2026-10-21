@@ -7,7 +7,7 @@ class ReporteService {
 
     // --- ARCHIVOS ---
     async cantidadArchivosPorTipo(usuarioId) {
-        permisosService.verificarSiEsAdmin(usuarioId);
+        await permisosService.verificarSiEsAdmin(usuarioId);
         await bitacoraService.registrarAccion(
             usuarioId,
             bitacoraEnum.CONSULTAR_REGISTROS,
@@ -19,7 +19,7 @@ class ReporteService {
 
     async archivosPorRangoFechas(inicio, fin, usuarioId) {
         if (!inicio || !fin) throw new Error('Las fechas de inicio y fin son requeridas.');
-        permisosService.verificarSiEsAdmin(usuarioId);
+        await permisosService.verificarSiEsAdmin(usuarioId);
         await bitacoraService.registrarAccion(
             usuarioId,
             bitacoraEnum.CONSULTAR_REGISTROS,
@@ -30,7 +30,7 @@ class ReporteService {
     }
 
     async archivosConMasOperaciones(usuarioId) {
-        permisosService.verificarSiEsAdmin(usuarioId);
+        await permisosService.verificarSiEsAdmin(usuarioId);
         await bitacoraService.registrarAccion(
             usuarioId,
             bitacoraEnum.CONSULTAR_REGISTROS,
@@ -42,7 +42,7 @@ class ReporteService {
 
     // --- USUARIOS ---
     async topUsuariosMasArchivos(usuarioId) {
-        permisosService.verificarSiEsAdmin(usuarioId);
+        await permisosService.verificarSiEsAdmin(usuarioId);
         await bitacoraService.registrarAccion(
             usuarioId,
             bitacoraEnum.CONSULTAR_REGISTROS,
@@ -53,7 +53,7 @@ class ReporteService {
     }
 
     async usuariosMasRecursosCompartidos(usuarioId) {
-        permisosService.verificarSiEsAdmin(usuarioId);
+        await permisosService.verificarSiEsAdmin(usuarioId);
         await bitacoraService.registrarAccion(
             usuarioId,
             bitacoraEnum.CONSULTAR_REGISTROS,
@@ -65,7 +65,7 @@ class ReporteService {
 
     // --- COMPARTICIÓN ---
     async archivosCompartidosConMasUsuarios(usuarioId) {
-        permisosService.verificarSiEsAdmin(usuarioId);
+        await permisosService.verificarSiEsAdmin(usuarioId);
         await bitacoraService.registrarAccion(
             usuarioId,
             bitacoraEnum.CONSULTAR_REGISTROS,
@@ -77,7 +77,7 @@ class ReporteService {
 
     async recursosCompartidosPorUsuario(usuarioId, usuarioIdToken) {
         if (!usuarioId) throw new Error('El ID del usuario es requerido.');
-        permisosService.verificarSiEsAdmin(usuarioIdToken);
+        await permisosService.verificarSiEsAdmin(usuarioIdToken);
         await bitacoraService.registrarAccion(
             usuarioIdToken,
             bitacoraEnum.CONSULTAR_REGISTROS,
@@ -89,7 +89,7 @@ class ReporteService {
 
     async recursosRecibidosPorUsuario(usuarioId, usuarioIdToken) {
         if (!usuarioId) throw new Error('El ID del usuario es requerido.');
-        permisosService.verificarSiEsAdmin(usuarioIdToken);
+        await permisosService.verificarSiEsAdmin(usuarioIdToken);
         await bitacoraService.registrarAccion(
             usuarioIdToken,
             bitacoraEnum.CONSULTAR_REGISTROS,
@@ -102,7 +102,7 @@ class ReporteService {
     // --- ACTIVIDAD ---
     async historialUsuarioFechas(usuarioId, inicio, fin, usuarioIdToken) {
         if (!usuarioId || !inicio || !fin) throw new Error('ID de usuario y fechas requeridas.');
-        permisosService.verificarSiEsAdmin(usuarioIdToken);
+        await permisosService.verificarSiEsAdmin(usuarioIdToken);
         await bitacoraService.registrarAccion(
             usuarioIdToken,
             bitacoraEnum.CONSULTAR_REGISTROS,
@@ -113,7 +113,7 @@ class ReporteService {
     }
 
     async operacionesPorTipo(usuarioId) {
-        permisosService.verificarSiEsAdmin(usuarioId);
+        await permisosService.verificarSiEsAdmin(usuarioId);
         await bitacoraService.registrarAccion(
             usuarioId,
             bitacoraEnum.CONSULTAR_REGISTROS,
@@ -124,7 +124,7 @@ class ReporteService {
     }
 
     async operacionesPorPeriodo(usuarioId) {
-        permisosService.verificarSiEsAdmin(usuarioId);
+        await permisosService.verificarSiEsAdmin(usuarioId);
         await bitacoraService.registrarAccion(
             usuarioId,
             bitacoraEnum.CONSULTAR_REGISTROS,
@@ -135,7 +135,7 @@ class ReporteService {
     }
 
     async principalesAccionesSistema(usuarioId) {
-        permisosService.verificarSiEsAdmin(usuarioId);
+        await permisosService.verificarSiEsAdmin(usuarioId);
         await bitacoraService.registrarAccion(
             usuarioId,
             bitacoraEnum.CONSULTAR_REGISTROS,

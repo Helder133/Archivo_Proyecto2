@@ -1,0 +1,28 @@
+<div class="table-responsive">
+    <table class="table table-dark table-striped table-hover table-bordered align-middle">
+        <thead class="table-secondary">
+            <tr>
+                @for (col of columnas; track col.llave) {
+                <th>{{ col.titulo }}</th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @for (fila of datos; track $index) {
+            <tr>
+                @for (col of columnas; track col.llave) {
+                <!-- Formateo rápido para fechas o valores anidados -->
+                <td>{{ fila[col.llave] }}</td>
+                }
+            </tr>
+            } @empty {
+            <tr>
+                <td [attr.colspan]="columnas.length" class="text-center py-4 text-secondary">
+                    <i class="bi bi-inbox fs-2"></i>
+                    <p class="mb-0">No hay datos disponibles para este reporte.</p>
+                </td>
+            </tr>
+            }
+        </tbody>
+    </table>
+</div>

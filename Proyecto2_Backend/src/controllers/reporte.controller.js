@@ -5,7 +5,7 @@ class ReporteController {
     // --- ARCHIVOS ---
     async cantidadArchivosPorTipo(req, res) {
         try {
-            const usuarioId = req.usuarioId;
+            const usuarioId = req.usuario.id;
             res.json(await reporteService.cantidadArchivosPorTipo(usuarioId));
         }
         catch (error) { res.status(400).json({ error: error.message }); }
@@ -13,7 +13,7 @@ class ReporteController {
 
     async archivosPorRangoFechas(req, res) {
         try {
-            const usuarioId = req.usuarioId;
+            const usuarioId = req.usuario.id;
             const { inicio, fin } = req.query; // Extraídos de ?inicio=2026-01-01&fin=2026-12-31
             res.json(await reporteService.archivosPorRangoFechas(inicio, fin, usuarioId));
         } catch (error) { res.status(400).json({ error: error.message }); }
@@ -21,7 +21,7 @@ class ReporteController {
 
     async archivosConMasOperaciones(req, res) {
         try {
-            const usuarioId = req.usuarioId;
+            const usuarioId = req.usuario.id;
             res.json(await reporteService.archivosConMasOperaciones(usuarioId));
         }
         catch (error) { res.status(400).json({ error: error.message }); }
@@ -30,7 +30,7 @@ class ReporteController {
     // --- USUARIOS ---
     async topUsuariosMasArchivos(req, res) {
         try {
-            const usuarioId = req.usuarioId;
+            const usuarioId = req.usuario.id;
             res.json(await reporteService.topUsuariosMasArchivos(usuarioId));
         }
         catch (error) { res.status(400).json({ error: error.message }); }
@@ -38,7 +38,7 @@ class ReporteController {
 
     async usuariosMasRecursosCompartidos(req, res) {
         try {
-            const usuarioId = req.usuarioId;
+            const usuarioId = req.usuario.id;
             res.json(await reporteService.usuariosMasRecursosCompartidos(usuarioId));
         }
         catch (error) { res.status(400).json({ error: error.message }); }
@@ -47,7 +47,7 @@ class ReporteController {
     // --- COMPARTICIÓN ---
     async archivosCompartidosConMasUsuarios(req, res) {
         try {
-            const usuarioId = req.usuarioId;
+            const usuarioId = req.usuario.id;
             res.json(await reporteService.archivosCompartidosConMasUsuarios(usuarioId));
         }
         catch (error) { res.status(400).json({ error: error.message }); }
@@ -55,7 +55,7 @@ class ReporteController {
 
     async recursosCompartidosPorUsuario(req, res) {
         try {
-            const usuarioIdToken = req.usuarioId;
+            const usuarioIdToken = req.usuario.id;
             res.json(await reporteService.recursosCompartidosPorUsuario(req.params.usuarioId, usuarioIdToken));
         }
         catch (error) { res.status(400).json({ error: error.message }); }
@@ -63,7 +63,7 @@ class ReporteController {
 
     async recursosRecibidosPorUsuario(req, res) {
         try {
-            const usuarioIdToken = req.usuarioId;
+            const usuarioIdToken = req.usuario.id;
             res.json(await reporteService.recursosRecibidosPorUsuario(req.params.usuarioId, usuarioIdToken));
         }
         catch (error) { res.status(400).json({ error: error.message }); }
@@ -72,7 +72,7 @@ class ReporteController {
     // --- ACTIVIDAD ---
     async historialUsuarioFechas(req, res) {
         try {
-            const usuarioId = req.usuarioId;
+            const usuarioId = req.usuario.id;
             const { inicio, fin } = req.query;
             res.json(await reporteService.historialUsuarioFechas(req.params.usuarioId, inicio, fin, usuarioId));
         } catch (error) { res.status(400).json({ error: error.message }); }
@@ -80,7 +80,7 @@ class ReporteController {
 
     async operacionesPorTipo(req, res) {
         try {
-            const usuarioId = req.usuarioId;
+            const usuarioId = req.usuario.id;
             res.json(await reporteService.operacionesPorTipo(usuarioId));
         }
         catch (error) { res.status(400).json({ error: error.message }); }
@@ -88,7 +88,7 @@ class ReporteController {
 
     async operacionesPorPeriodo(req, res) {
         try {
-            const usuarioId = req.usuarioId;
+            const usuarioId = req.usuario.id;
             res.json(await reporteService.operacionesPorPeriodo(usuarioId));
         }
         catch (error) { res.status(400).json({ error: error.message }); }
@@ -96,7 +96,7 @@ class ReporteController {
 
     async principalesAccionesSistema(req, res) {
         try {
-            const usuarioId = req.usuarioId;
+            const usuarioId = req.usuario.id;
             res.json(await reporteService.principalesAccionesSistema(usuarioId));
         }
         catch (error) { res.status(400).json({ error: error.message }); }

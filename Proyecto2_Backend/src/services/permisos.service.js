@@ -46,8 +46,8 @@ class PermisosService {
         return true;
     }
 
-    verificarSiEsAdmin(usuarioId) {
-        const usuario = UsuarioRepository.findById(usuarioId);
+    async verificarSiEsAdmin(usuarioId) {
+        const usuario = await UsuarioRepository.findById(usuarioId);
         if (!usuario) {
             throw new Error('Acceso denegado. Requiere privilegios de administrador.');
         }

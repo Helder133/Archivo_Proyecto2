@@ -4,7 +4,8 @@ class BitacoraController {
     
     async obtenerHistorial(req, res) {
         try {
-            const historial = await bitacoraService.obtenerHistorialCompleto();
+            const usuarioId = req.usuario.id;
+            const historial = await bitacoraService.obtenerHistorialCompleto(usuarioId);
             res.status(200).json(historial);
         } catch (error) {
             console.error("Error al obtener la bitácora:", error);

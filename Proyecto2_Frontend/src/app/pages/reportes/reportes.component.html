@@ -1,0 +1,86 @@
+<div class="container mt-4">
+    <div class="row">
+
+        <!-- Sidebar de Selección de Reportes -->
+        <div class="col-md-4 col-lg-3 mb-4">
+            <div class="card bg-dark border-secondary">
+                <div class="card-header border-secondary text-white">
+                    <h5 class="mb-0"><i class="bi bi-funnel me-2"></i>Reportes</h5>
+                </div>
+                <div class="list-group list-group-flush">
+                    @for (rep of listaReportes; track rep.id) {
+                    <button class="list-group-item list-group-item-action bg-dark text-light border-secondary"
+                        [class.active]="reporteActivo().id === rep.id" (click)="seleccionarReporte(rep)">
+                        {{ rep.titulo }}
+                    </button>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel Principal del Reporte -->
+        <div class="col-md-8 col-lg-9">
+            <div class="card bg-dark border-secondary">
+                <div class="card-header border-secondary text-white d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">{{ reporteActivo().titulo }}</h4>
+                </div>
+
+                <div class="card-body bg-dark text-light">
+
+                    <!-- Filtros Dinámicos -->
+                    @if (reporteActivo().requiereFechas || reporteActivo().requiereUsuarioId) {
+                    <div class="row g-3 mb-4 p-3 border border-secondary rounded">
+
+                        @if (reporteActivo().requiereFechas) {
+                        <div class="col-sm-5">
+                            <label class="form-label small text-secondary">Fecha Inicio</label>
+                            <input type="date" class="form-control bg-dark text-light border-secondary"
+                                [(ngModel)]="fechaInicio">
+                        </div>
+                        <div class="col-sm-5">
+                            <label class="form-label small text-secondary">Fecha Fin</label>
+                            <input type="date" class="form-control bg-dark text-light border-secondary"
+                                [(ngModel)]="fechaFin">
+                        </div>
+                        }
+
+                        @if (reporteActivo().requiereUsuarioId) {
+                        <div class="col-sm-10">
+                            <label class="form-label small text-secondary">Seleccionar Usuario</label>
+                            <select class="form-select bg-dark text-light border-secondary"
+                                [(ngModel)]="usuarioSeleccionado">
+                                <option value="">-- Seleccione un usuario --</option>
+                                @for (u of usuariosList(); track u._id) {
+                                <option [value]="u._id">{{ u.email }} ({{ u.nombre }})</option>
+                                }
+                            </select>
+                        </div>
+                        }
+
+                        <div class="col-sm-2 d-flex align-items-end">
+                            <button class="btn btn-primary w-100" (click)="generarReporte()">Generar</button>
+                        </div>
+                    </div>
+                    }
+
+                    <!-- Alertas -->
+                    @if (error()) {
+                    <div class="alert alert-danger"><i class="bi bi-exclamation-triangle me-2"></i>{{ error() }}</div>
+                    }
+
+                    <!-- Contenido -->
+                    @if (cargando()) {
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <p class="mt-2 text-secondary">Calculando datos...</p>
+                    </div>
+                    } @else {
+                    <app-reporte-tabla [datos]="datosReporte()" [columnas]="reporteActivo().columnas">
+                    </app-reporte-tabla>
+                    }
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

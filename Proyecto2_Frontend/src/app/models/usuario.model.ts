@@ -1,4 +1,4 @@
-import { usuarioEnum } from "./enums.emun";
+import { usuarioEnum } from "./enums/enums.emun";
 
 export interface Usuario {
     _id?: string;
