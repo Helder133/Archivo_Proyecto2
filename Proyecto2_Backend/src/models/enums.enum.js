@@ -13,14 +13,16 @@ const bitacoraEnum = Object.freeze({
     DESCARGA: 'descarga',
     CAMBIO_PERMISO: 'cambio_permiso',
     CONSULTAR_REGISTROS: 'consultar_registros',
-    RESTAURAR: 'restaurar'
+    RESTAURACION: 'restauracion'
 });
 
 const moduloAfectado = Object.freeze({
     ARCHIVO: 'archivo',
     CARPETA: 'carpeta',
     USUARIO: 'usuario',
-    BITACORA: 'bitacora'
+    BITACORA: 'bitacora',
+    COMPARTIDO: 'compartido',
+    REPORTE: 'reporte'
 });
 
 const permisosEnum = Object.freeze({

@@ -10,9 +10,10 @@ class ArchivoRepository {
         return result !== null;
     }
 
-    async create(archivo) {
-        const nuevoArchivo = await ArchivoModel.create(archivo);
-        return nuevoArchivo._id.toString();
+    async create(archivo, session = null) {
+        const options = session ? { session } : {};
+        const result = await ArchivoModel.create([archivo], options);
+        return result[0]._id.toString();
     }
 
     async subirAGridFs(nombreArchivo, buffer) {
@@ -28,8 +29,14 @@ class ArchivoRepository {
         });
     }
 
-    async findAll() {
-        return await ArchivoModel.find({ estado: true }).lean();
+    async findAll(usuarioIdEjecutor) {
+        return await ArchivoModel.find({
+            estado: true,
+            $or: [
+                { usuarioId: usuarioIdEjecutor },
+                { "compartidoCon.usuarioId": usuarioIdEjecutor }
+            ]
+        }).lean();
     }
 
     async findById(id) {
@@ -37,16 +44,97 @@ class ArchivoRepository {
         return await ArchivoModel.findOne({ _id: id, estado: true }).lean();
     }
 
-    async findByNombreCoincidencia(coincidencia) {
-        return await ArchivoModel.find({ nombre: coincidencia, estado: true }).lean();
+    async findByNombreCoincidencia(coincidencia, usuarioIdEjecutor) {
+        return await ArchivoModel.find({
+            nombre: coincidencia,
+            estado: true,
+            $or: [
+                { usuarioId: usuarioIdEjecutor },
+                { "compartidoCon.usuarioId": usuarioIdEjecutor }
+            ]
+        }).lean();
     }
 
-    async findByExtension(extension) {
-        return await ArchivoModel.find({ tipo: extension, estado: true }).lean();
+    async findByExtension(extension, usuarioIdEjecutor) {
+        return await ArchivoModel.find({
+            tipo: extension,
+            estado: true,
+            $or: [
+                { usuarioId: usuarioIdEjecutor },
+                { "compartidoCon.usuarioId": usuarioIdEjecutor }
+            ]
+        }).lean();
     }
 
-    async findPapeleria() {
-        return await ArchivoModel.find({ estado: false }).lean();
+    async findPapeleria(usuarioIdEjecutor) {
+        return await ArchivoModel.find({
+            estado: false,
+            $or: [
+                { usuarioId: usuarioIdEjecutor },
+                { "compartidoCon.usuarioId": usuarioIdEjecutor }
+            ]
+        }).lean();
+    }
+
+    async findByPath(path, usuarioIdEjecutor) {
+        return await ArchivoModel.find({
+            path: path,
+            estado: true,
+            $or: [
+                { usuarioId: usuarioIdEjecutor },
+                { "compartidoCon.usuarioId": usuarioIdEjecutor }
+            ]
+        }).lean();
+    }
+
+    async findCompartidosConUsuario(usuarioId) {
+        return await ArchivoModel.find({
+            "compartidoCon.usuarioId": usuarioId,
+            estado: true
+        }).lean();
+    }
+
+    async validarCompartidoCon(archivoId, usuarioId) {
+        if (!mongoose.Types.ObjectId.isValid(archivoId) || !mongoose.Types.ObjectId.isValid(usuarioId)) return false;
+        
+        const result = await ArchivoModel.exists({
+            _id: archivoId,
+            "compartidoCon.usuarioId": usuarioId
+        });
+        return result !== null;
+    }
+
+    async compartirArchivo(id, datosCompartir, session = null) {
+        if (!mongoose.Types.ObjectId.isValid(id)) return null;
+        const options = session ? { session } : {};
+        const result = await ArchivoModel.updateOne(
+            { _id: id },
+            { $push: { compartidoCon: { $each: datosCompartir } } },
+            options
+        );
+        return result.modifiedCount > 0;
+    }
+
+    async cambiarPermisoDeCompartido(id, usuarioId, nuevoPermiso, session = null) {
+        if (!mongoose.Types.ObjectId.isValid(id) || !mongoose.Types.ObjectId.isValid(usuarioId)) return null;
+        const options = session ? { session } : {};
+        const result = await ArchivoModel.updateOne(
+            { _id: id, "compartidoCon.usuarioId": usuarioId },
+            { $set: { "compartidoCon.$.permiso": nuevoPermiso } },
+            options
+        );
+        return result.modifiedCount > 0;
+    }
+
+    async eliminarCompartido(id, usuarioId, session = null) {
+        if (!mongoose.Types.ObjectId.isValid(id)) return null;
+        const options = session ? { session } : {};
+        const result = await ArchivoModel.updateOne(
+            { _id: id },
+            { $pull: { compartidoCon: { usuarioId: usuarioId } } },
+            options
+        );
+        return result.modifiedCount > 0;
     }
 
     // --- MÉTODO PARA DESCARGAR/LEER DE GRIDFS ---
@@ -68,12 +156,19 @@ class ArchivoRepository {
         return await ArchivoModel.findById(id).lean();
     }
 
-    async cambiarEstadoDeArchivo(id) {
+    async cambiarEstadoDeArchivo(id, session = null) {
         if (!mongoose.Types.ObjectId.isValid(id)) return null;
+
+        // Unificamos todas las configuraciones en un solo objeto
+        const options = { updatePipeline: true };
+        if (session) {
+            options.session = session;
+        }
+
         const result = await ArchivoModel.updateOne(
             { _id: id },
             [{ $set: { estado: { $not: "$estado" } } }],
-            { updatePipeline: true }
+            options
         );
         return result.modifiedCount > 0;
     }

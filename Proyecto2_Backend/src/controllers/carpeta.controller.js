@@ -1,9 +1,13 @@
 const carpetaService = require('../services/carpeta.service');
 
 class CarpetaController {
+
     async createCarpeta(req, res) {
+        const usuarioId = req.usuario.id;
+
         try {
             const carpeta = req.body.carpeta;
+            carpeta.usuarioId = usuarioId;
             await carpetaService.createCarpeta(carpeta);
 
             res.status(201).json({
@@ -15,8 +19,9 @@ class CarpetaController {
     }
 
     async findCarpetaById(req, res) {
+        const usuarioId = req.usuario.id;
         try {
-            const carpeta = await carpetaService.findCarpetaById(req.params.id);
+            const carpeta = await carpetaService.findCarpetaById(req.params.id, usuarioId);
             res.json(carpeta);
         } catch (error) {
             res.status(500).json({ error: error.message });
@@ -24,9 +29,10 @@ class CarpetaController {
     }
 
     async findCarpetasByPath(req, res) {
+        const usuarioId = req.usuario.id;
         try {
             const path = req.query.path ?? '/'; // Si no se proporciona una path, se establece como raíz
-            const carpetas = await carpetaService.findCarpetasByPath(path);
+            const carpetas = await carpetaService.findCarpetasByPath(path, usuarioId);
             res.json(carpetas);
         } catch (error) {
             res.status(500).json({ error: error.message });
@@ -34,18 +40,30 @@ class CarpetaController {
     }
 
     async findPapeleria(req, res) {
+        const usuarioId = req.usuario.id;
         try {
-            const carpetas = await carpetaService.findPapeleria();
+            const carpetas = await carpetaService.findPapeleria(usuarioId);
             res.json(carpetas);
         } catch (error) {
             res.status(500).json({ error: error.message });
         }
     }
 
-    async updateCarpeta(req, res) {
+    async getCarpetasByNombre(req, res) {
         try {
-            console.log('Datos recibidos para actualizar la carpeta:', req.body);
-            await carpetaService.updateCarpeta(req.params.id, req.body);
+            const usuarioId = req.usuario.id;
+            const { nombre } = req.params;
+            const carpetas = await carpetaService.getCarpetasByNombre(nombre, usuarioId);
+            res.status(200).json(carpetas);
+        } catch (error) {
+            res.status(400).json({ error: error.message });
+        }
+    }
+
+    async updateCarpeta(req, res) {
+        const usuarioId = req.usuario.id;
+        try {
+            await carpetaService.updateCarpeta(req.params.id, req.body, usuarioId);
             res.json({ message: 'Carpeta actualizada correctamente' });
         } catch (error) {
             res.status(400).json({ error: error.message });
@@ -53,9 +71,10 @@ class CarpetaController {
     }
 
     async moverCarpeta(req, res) {
+        const usuarioId = req.usuario.id;
         try {
             const { pathAnterior, pathNueva } = req.body;
-            await carpetaService.moverCarpeta(pathAnterior, pathNueva);
+            await carpetaService.moverCarpeta(pathAnterior, pathNueva, usuarioId);
             res.json({ message: 'Carpeta movida correctamente' });
         } catch (error) {
             res.status(400).json({ error: error.message });
@@ -63,9 +82,10 @@ class CarpetaController {
     }
 
     async cambiarEstadoCarpeta(req, res) {
+        const usuarioId = req.usuario.id;
         try {
             const { id } = req.params;
-            await carpetaService.actualizarEstadoCarpeta(id);
+            await carpetaService.actualizarEstadoCarpeta(id, usuarioId);
             res.json({ message: 'Estado de la carpeta cambiado correctamente' });
         } catch (error) {
             res.status(400).json({ error: error.message });
@@ -74,8 +94,9 @@ class CarpetaController {
 
     async eliminarCarpeta(req, res) {
         try {
+            const usuarioId = req.usuario.id;
             const { id } = req.params;
-            await carpetaService.eliminarCarpetaCompleta(id);
+            await carpetaService.eliminarCarpetaCompleta(id, usuarioId);
             res.json({ message: 'Carpeta eliminada correctamente' });
         } catch (error) {
             res.status(400).json({ error: error.message });
@@ -84,8 +105,9 @@ class CarpetaController {
 
     async compartirCarpeta(req, res) {
         try {
+            const usuarioId = req.usuario.id;
             const { id, compartido } = req.body;
-            await carpetaService.compartirCarpeta(id, compartido);
+            await carpetaService.compartirCarpeta(id, compartido, usuarioId);
             res.json({ message: 'Carpeta compartida correctamente' });
         } catch (error) {
             res.status(400).json({ error: error.message });
@@ -94,8 +116,9 @@ class CarpetaController {
 
     async cambiarPermisoDeCompartido(req, res) {
         try {
+            const usuarioId = req.usuario.id;
             const { id, compartido } = req.body;
-            await carpetaService.cambiarPermisoDeCompartido(id, compartido);
+            await carpetaService.cambiarPermisoDeCompartido(id, compartido, usuarioId);
             res.json({ message: 'Permiso de compartido actualizado correctamente' });
         } catch (error) {
             res.status(400).json({ error: error.message });
@@ -103,10 +126,10 @@ class CarpetaController {
     }
 
     async eliminarCompartido(req, res) {
+        const usuarioId = req.usuario.id;
         try {
-            const { id, usuarioId } = req.body;
-            console.log('Datos recibidos para eliminar compartido:', { id, usuarioId });
-            await carpetaService.eliminarCompartido(id, usuarioId);
+            const { id, usuarioIdCompartido } = req.body;
+            await carpetaService.eliminarCompartido(id, usuarioIdCompartido, usuarioId);
             res.json({ message: 'Usuario eliminado de compartido correctamente' });
         } catch (error) {
             res.status(400).json({ error: error.message });

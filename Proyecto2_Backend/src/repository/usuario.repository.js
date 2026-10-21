@@ -30,31 +30,42 @@ class UsuarioRepository {
         return exists !== null;
     }
 
-    async create(usuario) {
-        const nuevoUsuario = await UsuarioModel.create(usuario);
-        return nuevoUsuario._id.toString();
+    async create(usuario, session = null) {
+        const options = session ? { session } : {};
+        // Envolvemos 'usuario' en un arreglo para que Mongoose respete el objeto 'options'
+        const result = await UsuarioModel.create([usuario], options);
+        return result[0]._id.toString();
     }
 
-    async update(id, data) {
+    async update(id, data, session = null) {
         if (!mongoose.Types.ObjectId.isValid(id)) {
             return null;
         }
-
+        const options = { runValidators: true };
+        if (session) {
+            options.session = session;
+        }
         const resultado = await UsuarioModel.updateOne(
             { _id: id },
             { $set: data },
-            { runValidators: true }
+            options
         );
 
         return resultado.matchedCount > 0;
     }
 
-    async cambiarEstado(id) {
+    async cambiarEstado(id, session = null) {
         if (!mongoose.Types.ObjectId.isValid(id)) return null;
+
+        const options = { updatePipeline: true };
+        if (session) {
+            options.session = session;
+        }
 
         const resultado = await UsuarioModel.updateOne(
             { _id: id },
-            [{ $set: { estado: { $not: "$estado" } } }]
+            [{ $set: { estado: { $not: "$estado" } } }],
+            options
         );
 
         return resultado.modifiedCount > 0;

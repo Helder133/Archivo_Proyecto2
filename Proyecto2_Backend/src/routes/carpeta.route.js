@@ -10,6 +10,7 @@ router.post('/carpeta/compartir', verificarToken, controllerCarpeta.compartirCar
 
 router.get('/carpeta/path', verificarToken, controllerCarpeta.findCarpetasByPath);
 router.get('/carpeta/papeleria', verificarToken, controllerCarpeta.findPapeleria);
+router.get('/carpeta/buscar/:nombre', verificarToken, controllerCarpeta.getCarpetasByNombre);
 router.get('/carpeta/:id', verificarToken, controllerCarpeta.findCarpetaById);
 
 router.put('/carpeta/cambiar-permiso', verificarToken, controllerCarpeta.cambiarPermisoDeCompartido);

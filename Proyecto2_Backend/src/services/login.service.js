@@ -1,6 +1,9 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
-const usuarioDAO = require('../repository/usuario.repository.js');
+const usuarioRepository = require('../repository/usuario.repository.js');
+const bitacoraService = require('./bitacora.service.js');
+const { bitacoraEnum, moduloAfectado } = require('../models/enums.enum');
+
 
 class LoginService {
 
@@ -19,7 +22,7 @@ class LoginService {
             throw new Error('Email y contraseña son requeridos.');
         }
 
-        const usuario = await usuarioDAO.login(email);
+        const usuario = await usuarioRepository.login(email);
 
         if (!usuario) {
             throw new Error('Usuario no encontrado o inactivo.');
@@ -37,6 +40,8 @@ class LoginService {
 
         const firmaSecreta = process.env.JWT_SECRET;
         const token = jwt.sign(payload, firmaSecreta, { expiresIn: '24h' });
+        
+        await bitacoraService.registrarAccion(usuario._id.toString(), bitacoraEnum.INICIO_SESION, moduloAfectado.USUARIO, usuario.nombre, usuario._id.toString());
 
         return {
             token,

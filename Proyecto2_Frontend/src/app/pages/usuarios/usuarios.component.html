@@ -1,0 +1,51 @@
+<div class="container mt-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+        <h2 class="mb-0">Gestión de Usuarios</h2>
+
+        @if (!mostrarFormulario()) {
+        <div class="d-flex gap-2 align-items-center">
+            <!-- Barra de búsqueda reactiva -->
+            <div class="input-group">
+                <span class="input-group-text bg-dark text-secondary border-secondary">
+                    <i class="bi bi-search"></i>
+                </span>
+                <input type="text" class="form-control bg-dark text-light border-secondary"
+                    placeholder="Buscar por nombre o email..." [formControl]="searchControl">
+            </div>
+
+            <!-- Botón Nuevo Usuario -->
+            <button class="btn btn-success text-nowrap" (click)="abrirFormularioCrear()">
+                <i class="bi bi-plus-circle me-1"></i> Nuevo Usuario
+            </button>
+        </div>
+        }
+    </div>
+
+    @if (mostrarFormulario()) {
+    <!-- Formulario Hijo ... -->
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <app-usuario-form [usuarioAEditar]="usuarioSeleccionado()" [backendError]="errorMessage()"
+                (formSubmit)="guardarUsuario($event)" (formCancel)="cerrarFormulario()">
+            </app-usuario-form>
+        </div>
+    </div>
+    } @else {
+    <!-- Tarjetas Hijo ... -->
+    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4">
+        @for (user of usuarios(); track user._id) {
+        <div class="col">
+            <app-usuario-card [usuario]="user" (editar)="abrirFormularioEditar($event)"
+                (cambiarEstado)="cambiarEstado($event)">
+            </app-usuario-card>
+        </div>
+        } @empty {
+        <div class="col-12 text-center py-5">
+            <i class="bi bi-people text-secondary" style="font-size: 4rem;"></i>
+            <h4 class="text-secondary mt-3">No hay usuarios registrados en el sistema.</h4>
+        </div>
+        }
+    </div>
+    }
+</div>

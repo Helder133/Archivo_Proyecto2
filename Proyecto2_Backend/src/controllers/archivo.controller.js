@@ -11,12 +11,13 @@ class ArchivoController {
             // Extraemos la extensión del nombre original (ej: documento.txt -> .txt)
             const nombreOriginal = req.file.originalname;
             const tipoExtension = nombreOriginal.substring(nombreOriginal.lastIndexOf('.'));
+            const usuarioId = req.usuario.id;
 
             const archivoData = {
                 nombre: req.body.nombre || nombreOriginal, // Si no se proporciona un nombre, usamos el original
                 tipo: tipoExtension,
                 path: req.body.path,
-                usuarioId: req.body.usuarioId
+                usuarioId: usuarioId
             };
 
             await archivoService.createArchivo(archivoData, req.file.buffer);
@@ -28,8 +29,9 @@ class ArchivoController {
     }
 
     async getAllArchivos(req, res) {
+        const usuarioId = req.usuario.id;
         try {
-            const archivos = await archivoService.getAllArchivos();
+            const archivos = await archivoService.getAllArchivos(usuarioId);
             res.json(archivos);
         } catch (error) {
             res.status(500).json({ error: error.message });
@@ -37,8 +39,9 @@ class ArchivoController {
     }
 
     async getArchivoById(req, res) {
+        const usuarioId = req.usuario.id;
         try {
-            const archivo = await archivoService.getArchivoById(req.params.id);
+            const archivo = await archivoService.getArchivoById(req.params.id, usuarioId);
             res.json(archivo);
         } catch (error) {
             res.status(404).json({ error: error.message });
@@ -46,8 +49,9 @@ class ArchivoController {
     }
 
     async getArchivosByNombre(req, res) {
+        const usuarioId = req.usuario.id;
         try {
-            const archivos = await archivoService.getArchivosByNombre(req.params.nombre);
+            const archivos = await archivoService.getArchivosByNombre(req.params.nombre, usuarioId);
             res.json(archivos);
         } catch (error) {
             res.status(400).json({ error: error.message });
@@ -55,8 +59,9 @@ class ArchivoController {
     }
 
     async getArchivosByExtension(req, res) {
+        const usuarioId = req.usuario.id;
         try {
-            const archivos = await archivoService.getArchivosByExtension(req.params.ext);
+            const archivos = await archivoService.getArchivosByExtension(req.params.ext, usuarioId);
             res.json(archivos);
         } catch (error) {
             res.status(400).json({ error: error.message });
@@ -64,18 +69,31 @@ class ArchivoController {
     }
 
     async getPapeleria(req, res) {
+        const usuarioId = req.usuario.id;
         try {
-            const archivos = await archivoService.getPapeleria();
+            const archivos = await archivoService.getPapeleria(usuarioId);
             res.json(archivos);
         } catch (error) {
             res.status(500).json({ error: error.message });
         }
     }
 
+    async getArchivosByPath(req, res) {
+        const usuarioId = req.usuario.id;
+        try {
+            const path = req.query.path ?? '/'; // Si no se proporciona una path, se establece como raíz
+            const archivos = await archivoService.getArchivosByPath(path, usuarioId);
+            res.json(archivos);
+        } catch (error) {
+            res.status(400).json({ error: error.message });
+        }
+    }
+
     // --- MÉTODO PARA DESCARGAR/LEER ---
     async descargarArchivo(req, res) {
+        const usuarioId = req.usuario.id;
         try {
-            const { stream, nombreCompleto, tipo } = await archivoService.descargarArchivo(req.params.id);
+            const { stream, nombreCompleto, tipo } = await archivoService.descargarArchivo(req.params.id, usuarioId);
 
             // Configurar el tipo de contenido según la extensión
             if (tipo === '.txt') {
@@ -107,11 +125,12 @@ class ArchivoController {
     }
 
     async actualizarContenido(req, res) {
+        const usuarioId = req.usuario.id;
         try {
             if (!req.file) {
                 return res.status(400).json({ error: 'No se adjuntó el nuevo documento físico.' });
             }
-            await archivoService.actualizarContenido(req.params.id, req.file.buffer);
+            await archivoService.actualizarContenido(req.params.id, req.file.buffer, usuarioId);
             res.json({ message: 'Contenido del archivo actualizado correctamente.' });
         } catch (error) {
             res.status(400).json({ error: error.message });
@@ -119,8 +138,9 @@ class ArchivoController {
     }
 
     async cambiarEstadoArchivo(req, res) {
+        const usuarioId = req.usuario.id;
         try {
-            await archivoService.actualizarEstadoArchivo(req.params.id);
+            await archivoService.actualizarEstadoArchivo(req.params.id, usuarioId);
             res.json({ message: 'Estado del archivo cambiado correctamente.' });
         } catch (error) {
             res.status(400).json({ error: error.message });
@@ -128,9 +148,40 @@ class ArchivoController {
     }
 
     async eliminarArchivo(req, res) {
+        const usuarioId = req.usuario.id;
         try {
-            await archivoService.eliminarArchivoPermanente(req.params.id);
+            await archivoService.eliminarArchivoPermanente(req.params.id, usuarioId);
             res.json({ message: 'Archivo eliminado permanentemente del sistema.' });
+        } catch (error) {
+            res.status(400).json({ error: error.message });
+        }
+    }
+
+    async compartirArchivo(req, res) {
+        try {
+            const { id, compartido } = req.body;
+            await archivoService.compartirArchivo(id, compartido, req.usuario.id);
+            res.json({ message: 'Archivo compartido correctamente' });
+        } catch (error) {
+            res.status(400).json({ error: error.message });
+        }
+    }
+
+    async cambiarPermisoDeCompartido(req, res) {
+        try {
+            const { id, compartido } = req.body;
+            await archivoService.cambiarPermisoDeCompartido(id, compartido, req.usuario.id);
+            res.json({ message: 'Permiso del archivo actualizado correctamente' });
+        } catch (error) {
+            res.status(400).json({ error: error.message });
+        }
+    }
+
+    async eliminarCompartido(req, res) {
+        try {
+            const { id, usuarioId } = req.body;
+            await archivoService.eliminarCompartido(id, usuarioId, req.usuario.id);
+            res.json({ message: 'Usuario eliminado del archivo correctamente' });
         } catch (error) {
             res.status(400).json({ error: error.message });
         }

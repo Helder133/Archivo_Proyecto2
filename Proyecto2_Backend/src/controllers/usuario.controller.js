@@ -3,8 +3,9 @@ const usuarioService = require('../services/usuario.service.js');
 class UsuarioController {
     async controllerCreateUsuario(req, res) {
         try {
+            const usuarioId = req.usuario.id;
             const usuarioData = req.body.usuario;
-            await usuarioService.createUsuario(usuarioData);
+            await usuarioService.createUsuario(usuarioData, usuarioId);
             res.status(201).json({
                 mensaje: 'Usuario creado exitosamente.'
             });
@@ -17,9 +18,10 @@ class UsuarioController {
 
     async controllerUpdateUsuario(req, res) {
         try {
+            const usuarioId = req.usuario.id;
             const id = req.params.id;
-            const data = req.body.usuario;
-            await usuarioService.updateUsuario(id, data);
+            const data = req.body.usuario || req.body;
+            await usuarioService.updateUsuario(id, data, usuarioId);
             res.status(200).json({
                 mensaje: 'Usuario actualizado exitosamente.'
             });
@@ -33,7 +35,8 @@ class UsuarioController {
     async controllerUpdateEstadoUsuario(req, res) {
         try {
             const id = req.params.id;
-            await usuarioService.updateEstadoUsuario(id);
+            const usuarioId = req.usuario.id;
+            await usuarioService.updateEstadoUsuario(id, usuarioId);
             res.status(200).json({
                 mensaje: 'Estado del usuario actualizado exitosamente.'
             });
@@ -46,11 +49,10 @@ class UsuarioController {
 
     async controllerGetUsuarioById(req, res) {
         try {
+            const usuarioId = req.usuario.id;
             const id = req.params.id;
-            const usuario = await usuarioService.getUsuarioById(id);
-            res.status(200).json({
-                usuario: usuario
-            });
+            const usuario = await usuarioService.getUsuarioById(id, usuarioId);
+            res.status(200).json(usuario);
         } catch (error) {
             res.status(404).json({
                 mensaje: error.message
@@ -60,10 +62,9 @@ class UsuarioController {
 
     async controllerGetAllUsuarios(req, res) {
         try {
-            const usuarios = await usuarioService.getAllUsuarios();
-            res.status(200).json({
-                usuarios: usuarios
-            });
+            const usuarioId = req.usuario.id;
+            const usuarios = await usuarioService.getAllUsuarios(usuarioId);
+            res.status(200).json(usuarios);
         } catch (error) {
             res.status(500).json({
                 mensaje: 'Error al obtener los usuarios.'
@@ -73,11 +74,10 @@ class UsuarioController {
 
     async controllerGetUsuarioByCoincidence(req, res) {
         try {
+            const usuarioId = req.usuario.id;
             const coincidence = req.params.coincidence;
-            const usuarios = await usuarioService.getUsuarioByCoincidence(coincidence);
-            res.status(200).json({
-                usuarios: usuarios
-            });
+            const usuarios = await usuarioService.getUsuarioByCoincidence(coincidence, usuarioId);
+            res.status(200).json(usuarios);
         } catch (error) {
             res.status(500).json({
                 mensaje: 'Error al obtener los usuarios.'

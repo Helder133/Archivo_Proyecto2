@@ -1,5 +1,8 @@
 const carpetaRepository = require('../repository/carpeta.repository');
 const mongoose = require('mongoose');
+const bitacoraService = require('./bitacora.service');
+const permisosService = require('./permisos.service');
+const { bitacoraEnum, moduloAfectado, permisosEnum } = require('../models/enums.enum');
 
 class CarpetaService {
 
@@ -30,9 +33,11 @@ class CarpetaService {
                 const nombreParent = partes.pop();
                 const pathParent = partes.length > 0 ? `/${partes.join('/')}/` : '/';
 
-                const carpetaPadre = await carpetaRepository.findByNombreAndPath(nombreParent, pathParent);
+                const carpetaPadre = await carpetaRepository.findByNombreAndPath(nombreParent, pathParent, carpeta.usuarioId);
 
                 if (carpetaPadre) {
+                    // Validacion de permisos, si el usuario no es el dueño original, debe tener permisos de edición
+                    permisosService.verificarPermiso(carpetaPadre, carpeta.usuarioId, permisosEnum.EDITAR, usuario.rol)
                     // 1. Clonar los permisos del padre
                     permisosHeredados = carpetaPadre.compartidoCon.filter(
                         p => p.usuarioId.toString() !== carpeta.usuarioId.toString()
@@ -65,37 +70,84 @@ class CarpetaService {
             usuarioId: carpeta.usuarioId,
             estado: true,
             compartidoCon: permisosHeredados
-        }
+        };
 
-        return await carpetaRepository.create(newCarpeta);
+        const session = await mongoose.startSession();
+        let idNuevaCarpeta = null;
+
+        try {
+            await session.withTransaction(async () => {
+                // 1. Guardamos la carpeta asegurando la propagación de la sesión
+                idNuevaCarpeta = await carpetaRepository.create(newCarpeta, session);
+
+                // 2. Registramos la acción en la bitácora dentro de la misma transacció
+
+                await bitacoraService.registrarAccion(
+                    carpeta.usuarioId,
+                    bitacoraEnum.CREACION,
+                    moduloAfectado.CARPETA,
+                    carpeta.nombre,
+                    idNuevaCarpeta,
+                    session
+                );
+            });
+
+            return idNuevaCarpeta;
+        } catch (error) {
+            console.error("Error transaccional al crear carpeta:", error);
+            throw error;
+        } finally {
+            await session.endSession();
+        }
     }
 
-    async findByNombreAndPath(nombre, path) {
+    async findByNombreAndPath(nombre, path, usuarioId) {
         const carpeta = await carpetaRepository.findByNombreAndPath(nombre, path);
         if (!carpeta) {
             throw new Error(`No se encontró la carpeta con nombre: ${nombre} y path: ${path}`);
         }
+
+        // Validacion de permisos, si el usuario no es el dueño original, debe tener permisos de lectura
+        permisosService.verificarPermiso(carpeta, usuarioId, permisosEnum.LECTURA);
+
+        await bitacoraService.registrarAccion(usuarioId, bitacoraEnum.CONSULTAR_REGISTROS, moduloAfectado.CARPETA, carpeta.nombre, carpeta._id.toString());
         return carpeta;
     }
 
-    async findCarpetaById(id) {
+    async findCarpetaById(id, usuarioId) {
         const carpeta = await carpetaRepository.findById(id);
         if (!carpeta) {
             throw new Error(`No se encontró la carpeta con ID: ${id}`);
         }
+
+        // Validacion de permisos, si el usuario no es el dueño original, debe tener permisos de lectura
+        permisosService.verificarPermiso(carpeta, usuarioId, permisosEnum.LECTURA);
+
+        await bitacoraService.registrarAccion(usuarioId, bitacoraEnum.CONSULTAR_REGISTROS, moduloAfectado.CARPETA, carpeta.nombre, carpeta._id.toString());
         return carpeta;
     }
 
-    async findCarpetasByPath(path) {
-        return await carpetaRepository.findByPath(path);
+    async findCarpetasByPath(path, usuarioId) {
+        await bitacoraService.registrarAccion(usuarioId, bitacoraEnum.CONSULTAR_REGISTROS, moduloAfectado.CARPETA, `Consulta de carpetas en path: ${path}`);
+        return await carpetaRepository.findByPath(path, usuarioId);
     }
 
-    async findPapeleria() {
+    async findPapeleria(usuarioId) {
+        await bitacoraService.registrarAccion(usuarioId, bitacoraEnum.CONSULTAR_REGISTROS, moduloAfectado.CARPETA, 'Consulta de la papelería');
         return await carpetaRepository.findPapeleria();
     }
 
-    async updateCarpeta(id, data) {
-        console.log('Iniciando actualización de carpeta con ID:', id, 'y datos:', data);
+    async getCarpetasByNombre(coincidencia, usuarioId) {
+        await bitacoraService.registrarAccion(usuarioId, bitacoraEnum.CONSULTAR_REGISTROS, moduloAfectado.CARPETA, `Consulta de carpetas por coincidencia: ${coincidencia}`);
+        if (!coincidencia || coincidencia.trim() === '') return [];
+
+        const textoEscapado = coincidencia.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(textoEscapado, 'i'); // 'i' para que no distinga mayúsculas y minúsculas
+
+        return await carpetaRepository.findByNombreCoincidencia(regex);
+    }
+
+    async updateCarpeta(id, data, usuarioId) {
         const carpetaExistente = await carpetaRepository.findById(id);
         if (!carpetaExistente) {
             throw new Error(`No se encontró la carpeta con ID: ${id}`);
@@ -103,11 +155,10 @@ class CarpetaService {
 
         // Si NO hay cambio de nombre (ej. solo están actualizando otro campo), hacemos un update normal
         if (!data.nombre || data.nombre === carpetaExistente.nombre) {
-            console.log('No hay cambio de nombre detectado. Procediendo con actualización normal...');
+            await bitacoraService.registrarAccion(usuarioId, bitacoraEnum.MODIFICACION, moduloAfectado.CARPETA, data.nombre, id);
             return await carpetaRepository.update(id, data);
         }
 
-        console.log('Cambio de nombre detectado. Validando existencia de carpeta con el nuevo nombre...');
         // Si SÍ hay cambio de nombre, validamos que el nuevo nombre no choque con otra carpeta
         const existe = await carpetaRepository.existeNombreEnLaMismaPath(data.nombre, carpetaExistente.path);
         if (existe) {
@@ -116,9 +167,10 @@ class CarpetaService {
 
         // Calculamos las rutas absolutas para los hijos basándonos en el nombre viejo y el nuevo
         const pathAnteriorHijos = `${carpetaExistente.path}${carpetaExistente.nombre}/`;
-        console.log('Ruta anterior para hijos:', pathAnteriorHijos);
         const pathNuevaHijos = `${carpetaExistente.path}${data.nombre}/`;
-        console.log('Ruta nueva para hijos:', pathNuevaHijos);
+
+        // Validacion de permisos, si el usuario no es el dueño original, debe tener permisos de edición
+        permisosService.verificarPermiso(carpetaExistente, usuarioId, permisosEnum.EDITAR);
 
         const session = await mongoose.startSession();
 
@@ -133,6 +185,9 @@ class CarpetaService {
                 // 3. Propagamos el cambio de ruta a todos los archivos
                 const archivoService = require('./archivo.service');
                 await archivoService.moverArchivos(pathAnteriorHijos, pathNuevaHijos, session);
+
+                // 4. Registramos la acción en la bitácora dentro de la misma transacción
+                await bitacoraService.registrarAccion(usuarioId, bitacoraEnum.MODIFICACION, moduloAfectado.CARPETA, data.nombre, id, session);
             });
             return true;
         } catch (error) {
@@ -161,7 +216,7 @@ class CarpetaService {
         }
     }
 
-    async eliminarCarpetaCompleta(id) {
+    async eliminarCarpetaCompleta(id, usuarioId) {
         // 1. Validamos que exista por ID (y de paso obtenemos sus datos)
         const carpetaExistente = await carpetaRepository.findByIdSinEstado(id);
         if (!carpetaExistente) {
@@ -170,6 +225,9 @@ class CarpetaService {
 
         // 2. Armamos la ruta completa a partir de la base de datos, no del frontend
         const rutaCompleta = `${carpetaExistente.path}${carpetaExistente.nombre}/`;
+
+        // Validacion de permisos, si el usuario no es el dueño original, debe tener permisos de edición
+        permisosService.verificarPermiso(carpetaExistente, usuarioId, permisosEnum.EDITAR);
 
         const session = await mongoose.startSession();
 
@@ -180,6 +238,7 @@ class CarpetaService {
                 // 3. Destruimos la descendencia y a la carpeta misma con el Regex
                 await archivoService.eliminarArchivosPorPath(rutaCompleta, session);
                 await carpetaRepository.eliminarPorPath(rutaCompleta, session);
+                await bitacoraService.registrarAccion(usuarioId, bitacoraEnum.ELIMINACION, moduloAfectado.CARPETA, carpetaExistente.nombre, id, session);
             });
             return true;
         } catch (error) {
@@ -190,7 +249,7 @@ class CarpetaService {
         }
     }
 
-    async actualizarEstadoCarpeta(id) {
+    async actualizarEstadoCarpeta(id, usuarioId) {
         const carpetaExistente = await carpetaRepository.findByIdSinEstado(id);
         if (!carpetaExistente) {
             throw new Error(`No se encontró la carpeta seleccionada.`);
@@ -202,8 +261,12 @@ class CarpetaService {
         // Calculamos la ruta letal que afectará a los hijos
         const rutaPadre = `${carpetaExistente.path}${carpetaExistente.nombre}/`;
 
+        // Validacion de permisos, si el usuario no es el dueño original, debe tener permisos de edición
+        permisosService.verificarPermiso(carpetaExistente, usuarioId, permisosEnum.EDITAR);
+
         const archivoService = require('./archivo.service');
         const session = await mongoose.startSession();
+        const accion = nuevoEstado ? bitacoraEnum.RESTAURACION : bitacoraEnum.ELIMINACION;
 
         try {
             await session.withTransaction(async () => {
@@ -215,6 +278,9 @@ class CarpetaService {
 
                 // 3. Propagamos el mismo estado a todos los archivos
                 await archivoService.cambiarEstadoDescendientes(rutaPadre, nuevoEstado, session);
+
+                // 4. Registramos la acción en la bitácora dentro de la misma transacción
+                await bitacoraService.registrarAccion(usuarioId, accion, moduloAfectado.CARPETA, carpetaExistente.nombre, id, session);
             });
             return nuevoEstado;
         } catch (error) {
@@ -225,10 +291,13 @@ class CarpetaService {
         }
     }
 
-    async compartirCarpeta(id, datosCompartir) {
+    async compartirCarpeta(id, datosCompartir, usuarioId) {
         console.log('Iniciando proceso de compartir carpeta con ID:', id, 'y datos:', datosCompartir);
         const carpetaExistente = await carpetaRepository.findByIdSinEstado(id);
         if (!carpetaExistente) throw new Error('Carpeta no encontrada.');
+
+        // Validacion de permisos, si el usuario no es el dueño original, debe tener permisos de edición
+        permisosService.verificarPermiso(carpetaExistente, usuarioId, permisosEnum.EDITAR);
 
         // Calculamos la ruta absoluta que afectará a los hijos
         const rutaPadre = `${carpetaExistente.path}${carpetaExistente.nombre}/`;
@@ -239,8 +308,6 @@ class CarpetaService {
             await session.withTransaction(async () => {
                 for (const compartido of datosCompartir) {
                     if (!compartido.usuarioId || !compartido.permiso) {
-                        console.log('campartido:', compartido);
-                        console.log(!compartido.usuarioId || !compartido.permiso)
                         throw new Error('Faltan datos requeridos para compartir la carpeta.');
                     }
                     if (!mongoose.Types.ObjectId.isValid(id) || !mongoose.Types.ObjectId.isValid(compartido.usuarioId)) {
@@ -252,7 +319,7 @@ class CarpetaService {
                     if (yaExiste) {
                         await carpetaRepository.cambiarPermisoDeCompartido(id, compartido.usuarioId, compartido.permiso, session);
                     } else {
-                        await carpetaRepository.compartirCarpeta(id, [compartido], session); // Asumiendo que adaptaste este método para recibir session
+                        await carpetaRepository.compartirCarpeta(id, [compartido], session);
                     }
 
                     // 2. Propagamos la herencia a descendientes (Carpetas y Archivos)
@@ -263,6 +330,9 @@ class CarpetaService {
                     // Luego inyectamos el nuevo permiso heredado
                     await carpetaRepository.agregarPermisoDescendientes(rutaPadre, compartido, session);
                     await archivoService.agregarPermisoDescendientes(rutaPadre, compartido, session);
+
+                    // 3. Registramos la acción en la bitácora dentro de la misma transacción
+                    await bitacoraService.registrarAccion(usuarioId, bitacoraEnum.COMPARTIR, moduloAfectado.CARPETA, carpetaExistente.nombre, id, session);
                 }
             });
             return true;
@@ -274,20 +344,23 @@ class CarpetaService {
         }
     }
 
-    async cambiarPermisoDeCompartido(id, datosCompartido) {
+    async cambiarPermisoDeCompartido(id, datosCompartido, usuarioId) {
         const arregloACompartir = Array.isArray(datosCompartido) ? datosCompartido : [datosCompartido];
 
         // Reutilizamos el método superior para aplicar la cascada sin romper la estructura
-        return await this.compartirCarpeta(id, arregloACompartir);
+        return await this.compartirCarpeta(id, arregloACompartir, usuarioId);
     }
 
-    async eliminarCompartido(id, usuarioId) {
-        if (!mongoose.Types.ObjectId.isValid(id) || !mongoose.Types.ObjectId.isValid(usuarioId)) {
+    async eliminarCompartido(id, usuarioIdCompartido, usuarioId) {
+        if (!mongoose.Types.ObjectId.isValid(id) || !mongoose.Types.ObjectId.isValid(usuarioIdCompartido)) {
             throw new Error('ID de carpeta o usuario inválido.');
         }
 
         const carpetaExistente = await carpetaRepository.findByIdSinEstado(id);
         if (!carpetaExistente) throw new Error('Carpeta no encontrada.');
+
+        // Validacion de permisos, si el usuario no es el dueño original, debe tener permisos de edición
+        permisosService.verificarPermiso(carpetaExistente, usuarioId, permisosEnum.EDITAR);
 
         const rutaPadre = `${carpetaExistente.path}${carpetaExistente.nombre}/`;
         const archivoService = require('./archivo.service');
@@ -296,11 +369,14 @@ class CarpetaService {
         try {
             await session.withTransaction(async () => {
                 // 1. Quitamos permiso al padre
-                await carpetaRepository.eliminarCompartido(id, usuarioId, session);
+                await carpetaRepository.eliminarCompartido(id, usuarioIdCompartido, session);
 
                 // 2. Quitamos permiso a toda la descendencia
-                await carpetaRepository.removerPermisoDescendientes(rutaPadre, usuarioId, session);
-                await archivoService.removerPermisoDescendientes(rutaPadre, usuarioId, session);
+                await carpetaRepository.removerPermisoDescendientes(rutaPadre, usuarioIdCompartido, session);
+                await archivoService.removerPermisoDescendientes(rutaPadre, usuarioIdCompartido, session);
+
+                // 3. Registramos la acción en la bitácora dentro de la misma transacción
+                await bitacoraService.registrarAccion(usuarioId, bitacoraEnum.CAMBIO_PERMISO, moduloAfectado.CARPETA, carpetaExistente.nombre, id, session);
             });
             return true;
         } catch (error) {

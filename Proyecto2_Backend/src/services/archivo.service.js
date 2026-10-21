@@ -1,4 +1,8 @@
+const mongoose = require('mongoose');
 const archivoRepository = require('../repository/archivo.repository');
+const permisosService = require('./permisos.service');
+const bitacoraService = require('./bitacora.service');
+const { bitacoraEnum, moduloAfectado, permisosEnum } = require('../models/enums.enum');
 
 class ArchivoService {
 
@@ -29,6 +33,9 @@ class ArchivoService {
                 const carpetaPadre = await carpetaService.findByNombreAndPath(nombreParent, pathParent);
 
                 if (carpetaPadre) {
+                    // Validacion de permisos, si el usuario no es el dueño original, debe tener permisos de edición
+                    permisosService.verificarPermiso(carpetaPadre, archivoData.usuarioId, permisosEnum.EDITAR, usuario.rol)
+
                     // clonamos excluyendo al creador del archivo
                     permisosHeredados = carpetaPadre.compartidoCon.filter(
                         p => p.usuarioId.toString() !== archivoData.usuarioId.toString()
@@ -63,45 +70,86 @@ class ArchivoService {
             compartidoCon: permisosHeredados
         };
 
-        return await archivoRepository.create(nuevoArchivo);
+        const session = await mongoose.startSession();
+
+        try {
+            await session.withTransaction(async () => {
+                idNuevoArchivo = await archivoRepository.create(nuevoArchivo, session);
+                await bitacoraService.registrarAccion(
+                    nuevoArchivo.usuarioId,
+                    bitacoraEnum.CREACION,
+                    moduloAfectado.ARCHIVO,
+                    nuevoArchivo.nombre,
+                    idNuevoArchivo,
+                    session
+                );
+            });
+
+            return idNuevoArchivo;
+
+        } catch (error) {
+            console.error("Error en la transacción, ejecutando rollback físico...", error);
+            await archivoRepository.eliminarBinariosGridFS([gridFsId]);
+            throw error;
+        } finally {
+            await session.endSession();
+        }
     }
 
-    async getAllArchivos() {
+    async getAllArchivos(usuarioId) {
+        await bitacoraService.registrarAccion(usuarioId, bitacoraEnum.CONSULTAR_REGISTROS, moduloAfectado.ARCHIVO, 'Todos los archivos', null, null);
         return await archivoRepository.findAll();
     }
 
-    async getArchivoById(id) {
+    async getArchivoById(id, usuarioId) {
         const archivo = await archivoRepository.findById(id);
         if (!archivo) throw new Error('Archivo no encontrado.');
+
+        // Validacion de permisos, si el usuario no es el dueño original, debe tener permisos de lectura
+        permisosService.verificarPermiso(archivo, usuarioId, permisosEnum.LECTURA);
+        
+        await bitacoraService.registrarAccion(usuarioId, bitacoraEnum.CONSULTAR_REGISTROS, moduloAfectado.ARCHIVO, archivo.nombre, id, null);
         return archivo;
     }
 
-    async getArchivosByNombre(coincidencia) {
+    async getArchivosByNombre(coincidencia, usuarioId) {
         if (!coincidencia || coincidencia.trim() === '') return [];
 
         // Escapar caracteres especiales para que la base de datos no colapse
         const textoEscapado = coincidencia.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const regex = new RegExp(textoEscapado, 'i'); // 'i' para que no distinga mayúsculas y minúsculas
 
+        await bitacoraService.registrarAccion(usuarioId, bitacoraEnum.CONSULTAR_REGISTROS, moduloAfectado.ARCHIVO, `Búsqueda por nombre: ${coincidencia}`, null, null);
         return await archivoRepository.findByNombreCoincidencia(regex);
     }
 
-    async getArchivosByExtension(extension) {
+    async getArchivosByExtension(extension, usuarioId) {
         if (!extension || extension.trim() === '') return [];
         const extFormat = extension.startsWith('.') ? extension.trim() : `.${extension.trim()}`;
+        await bitacoraService.registrarAccion(usuarioId, bitacoraEnum.CONSULTAR_REGISTROS, moduloAfectado.ARCHIVO, `Búsqueda por extensión: ${extFormat}`, null, null);
         return await archivoRepository.findByExtension(extFormat);
     }
 
-    async getPapeleria() {
+    async getPapeleria(usuarioId) {
+        await bitacoraService.registrarAccion(usuarioId, bitacoraEnum.CONSULTAR_REGISTROS, moduloAfectado.ARCHIVO, 'Papelera', null, null);
         return await archivoRepository.findPapeleria();
     }
 
+    async getArchivosByPath(path, usuarioIdEjecutor) {
+        await bitacoraService.registrarAccion(usuarioIdEjecutor, bitacoraEnum.CONSULTAR_REGISTROS, moduloAfectado.ARCHIVO, `Archivos en path: ${path}`, null, null);
+        return await archivoRepository.findByPath(path, usuarioIdEjecutor);
+    }
+
     // --- MÉTODO PARA DESCARGAR/LEER ---
-    async descargarArchivo(id) {
+    async descargarArchivo(id, usuarioId) {
         const archivo = await archivoRepository.findById(id);
         if (!archivo) {
             throw new Error('Archivo no encontrado o está en la papelera.');
         }
+        // Validacion de permisos, si el usuario no es el dueño original, debe tener permisos de lectura
+        permisosService.verificarPermiso(archivo, usuarioId, permisosEnum.LECTURA);
+
+        await bitacoraService.registrarAccion(usuarioId, bitacoraEnum.DESCARGA, moduloAfectado.ARCHIVO, archivo.nombre, id, null);
         const stream = await archivoRepository.descargarDeGridFs(archivo.archivoGridFsId);
         return {
             stream,
@@ -110,7 +158,7 @@ class ArchivoService {
         };
     }
 
-    async actualizarContenido(id, fileBuffer) {
+    async actualizarContenido(id, fileBuffer, usuarioId) {
         if (!fileBuffer) {
             throw new Error('No se proporcionó el nuevo contenido del archivo.');
         }
@@ -124,6 +172,9 @@ class ArchivoService {
 
         // 1. Subimos el nuevo contenido a GridFS (Fuera de la transacción porque los streams no la soportan)
         const idGridFsNuevo = await archivoRepository.subirAGridFs(archivoExistente.nombre, fileBuffer);
+
+        // Validacion de permisos, si el usuario no es el dueño original, debe tener permisos de edición
+        permisosService.verificarPermiso(archivoExistente, usuarioId, permisosEnum.EDITAR);
 
         const session = await mongoose.startSession();
 
@@ -140,6 +191,9 @@ class ArchivoService {
 
                 // 3. Eliminamos el archivo viejo usando la sesión
                 await archivoRepository.eliminarBinariosGridFS([idGridFsViejo], session);
+
+                // 4. Registramos la acción en la bitácora
+                await bitacoraService.registrarAccion(usuarioId, bitacoraEnum.MODIFICACION, moduloAfectado.ARCHIVO, archivoExistente.nombre, id, session);
             });
 
             return true;
@@ -154,19 +208,43 @@ class ArchivoService {
         }
     }
 
-    async actualizarEstadoArchivo(id) {
+    async actualizarEstadoArchivo(id, usuarioId) {
         const archivoExistente = await archivoRepository.findByIdSinEstado(id);
         if (!archivoExistente) {
             throw new Error(`No se encontró el archivo con ID: ${id}`);
         }
-        return await archivoRepository.cambiarEstadoDeArchivo(id);
+
+        // Validacion de permisos, si el usuario no es el dueño original, debe tener permisos de edición
+        permisosService.verificarPermiso(archivoExistente, usuarioId, permisosEnum.EDITAR);
+
+        const session = await mongoose.startSession();
+        const accion = !archivoExistente.estado ? bitacoraEnum.ELIMINACION : bitacoraEnum.RESTAURACION;
+
+        try {
+            await session.withTransaction(async () => {
+                await archivoRepository.cambiarEstadoDeArchivo(id, session);
+
+                await bitacoraService.registrarAccion(usuarioId, accion, moduloAfectado.ARCHIVO, archivoExistente.nombre, id, session
+                );
+            });
+
+            return true;
+        } catch (error) {
+            console.error("Error al cambiar el estado del archivo:", error);
+            throw error;
+        } finally {
+            await session.endSession();
+        }
     }
 
-    async eliminarArchivoPermanente(id) {
+    async eliminarArchivoPermanente(id, usuarioId) {
         const archivoExistente = await archivoRepository.findByIdSinEstado(id);
         if (!archivoExistente) {
             throw new Error('Archivo no encontrado.');
         }
+
+        // Validacion de permisos, si el usuario no es el dueño original, debe tener permisos de edición
+        permisosService.verificarPermiso(archivoExistente, usuarioId, permisosEnum.EDITAR);
 
         const idGridFs = archivoExistente.archivoGridFsId;
         const session = await mongoose.startSession();
@@ -178,10 +256,90 @@ class ArchivoService {
 
                 // 2. Eliminamos la metadata lógica de Mongoose
                 await archivoRepository.eliminarPorId(id, session);
+
+                // 3. Registramos la acción en la bitácora
+                await bitacoraService.registrarAccion(usuarioId, bitacoraEnum.ELIMINACION, moduloAfectado.ARCHIVO, archivoExistente.nombre, id, session);
             });
             return true;
         } catch (error) {
             console.error("Error al eliminar archivo físicamente:", error);
+            throw error;
+        } finally {
+            await session.endSession();
+        }
+    }
+
+    async compartirArchivo(id, datosCompartir, usuarioIdEjecutor) {
+        const archivoExistente = await archivoRepository.findByIdSinEstado(id);
+        if (!archivoExistente) throw new Error('Archivo no encontrado.');
+
+        permisosService.verificarPermiso(archivoExistente, usuarioIdEjecutor, permisosEnum.EDITAR);
+
+        const nuevosParaCompartir = [];
+        const session = await mongoose.startSession();
+
+        try {
+            await session.withTransaction(async () => {
+                for (const compartido of datosCompartir) {
+                    if (!compartido.usuarioId || !compartido.permiso) {
+                        throw new Error('Faltan datos requeridos para compartir el archivo.');
+                    }
+                    if (!mongoose.Types.ObjectId.isValid(id) || !mongoose.Types.ObjectId.isValid(compartido.usuarioId)) {
+                        throw new Error('ID de archivo o usuario inválido.');
+                    }
+
+                    const yaExiste = await archivoRepository.validarCompartidoCon(id, compartido.usuarioId);
+                    if (yaExiste) {
+                        await archivoRepository.cambiarPermisoDeCompartido(id, compartido.usuarioId, compartido.permiso, session);
+                    } else {
+                        nuevosParaCompartir.push(compartido);
+                    }
+                }
+
+                if (nuevosParaCompartir.length > 0) {
+                    await archivoRepository.compartirArchivo(id, nuevosParaCompartir, session);
+                }
+
+                // 3. Registramos en bitácora
+                const bitacoraService = require('./bitacora.service');
+                await bitacoraService.registrarAccion(usuarioIdEjecutor, bitacoraEnum.COMPARTIR, moduloAfectado.ARCHIVO, archivoExistente.nombre, id, session);
+            });
+            return true;
+        } catch (error) {
+            console.error("Error al compartir archivo:", error);
+            throw error;
+        } finally {
+            await session.endSession();
+        }
+    }
+
+    async cambiarPermisoDeCompartido(id, datosCompartido, usuarioIdEjecutor) {
+        const arregloACompartir = Array.isArray(datosCompartido) ? datosCompartido : [datosCompartido];
+        return await this.compartirArchivo(id, arregloACompartir, usuarioIdEjecutor);
+    }
+
+    async eliminarCompartido(id, usuarioIdCompartido, usuarioIdEjecutor) {
+        if (!mongoose.Types.ObjectId.isValid(id) || !mongoose.Types.ObjectId.isValid(usuarioIdCompartido)) {
+            throw new Error('ID de archivo o usuario inválido.');
+        }
+
+        const archivoExistente = await archivoRepository.findByIdSinEstado(id);
+        if (!archivoExistente) throw new Error('Archivo no encontrado.');
+
+        permisosService.verificarPermiso(archivoExistente, usuarioIdEjecutor, permisosEnum.EDITAR);
+
+        const session = await mongoose.startSession();
+
+        try {
+            await session.withTransaction(async () => {
+                await archivoRepository.eliminarCompartido(id, usuarioIdCompartido, session);
+                
+                const bitacoraService = require('./bitacora.service');
+                await bitacoraService.registrarAccion(usuarioIdEjecutor, bitacoraEnum.CAMBIO_PERMISO, moduloAfectado.ARCHIVO, archivoExistente.nombre, id, session);
+            });
+            return true;
+        } catch (error) {
+            console.error("Error al revocar acceso al archivo:", error);
             throw error;
         } finally {
             await session.endSession();

@@ -8,9 +8,10 @@ class CarpetaRepository {
         return result !== null;
     }
 
-    async create(carpeta) {
-        const nuevaCarpeta = await CarpetaModel.create(carpeta);
-        return nuevaCarpeta._id.toString();
+    async create(carpeta, session = null) {
+        const options = session ? { session } : {};
+        const result = await CarpetaModel.create([carpeta], options);
+        return result[0]._id.toString();
     }
 
     async findById(id) {
@@ -23,16 +24,52 @@ class CarpetaRepository {
         return await CarpetaModel.findById(id).lean();
     }
 
-    async findByPath(path) {
-        return await CarpetaModel.find({ path: path, estado: true }).lean();
+    async findByPath(path, usuarioIdEjecutor) {
+        return await CarpetaModel.find({
+            path: path,
+            estado: true,
+            $or: [
+                { usuarioId: usuarioIdEjecutor },
+                { "compartidoCon.usuarioId": usuarioIdEjecutor }
+            ]
+        }).lean();
     }
 
-    async findPapeleria() {
-        return await CarpetaModel.find({ estado: false }).lean();
+    async findPapeleria(usuarioIdEjecutor) {
+        return await CarpetaModel.find({
+            estado: false,
+            usuarioId: usuarioIdEjecutor
+        }).lean();
     }
 
-    async findByNombreAndPath(nombre, path) {
-        return await CarpetaModel.findOne({ nombre: nombre, path: path, estado: true }).lean();
+    async findByNombreAndPath(nombre, path, usuarioIdEjecutor) {
+        return await CarpetaModel.findOne({
+            nombre: nombre,
+            path: path,
+            estado: true,
+            $or: [
+                { usuarioId: usuarioIdEjecutor },
+                { "compartidoCon.usuarioId": usuarioIdEjecutor }
+            ]
+        }).lean();
+    }
+
+    async findByNombreCoincidencia(coincidencia, usuarioIdEjecutor) {
+        return await CarpetaModel.find({
+            nombre: coincidencia,
+            estado: true,
+            $or: [
+                { usuarioId: usuarioIdEjecutor },
+                { "compartidoCon.usuarioId": usuarioIdEjecutor }
+            ]
+        }).lean();
+    }
+
+    async findCompartidosConUsuario(usuarioId) {
+        return await CarpetaModel.find({
+            "compartidoCon.usuarioId": usuarioId,
+            estado: true
+        }).lean();
     }
 
     async update(id, data, session = null) {

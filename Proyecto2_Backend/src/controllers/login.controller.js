@@ -1,6 +1,7 @@
 const loginService = require('../services/login.service.js');
 
 class LoginController {
+    
     async controllerLogin(req, res) {
         try {
             const {Login} = req.body;

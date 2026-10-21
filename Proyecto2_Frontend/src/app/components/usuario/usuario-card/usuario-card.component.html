@@ -1,0 +1,43 @@
+<div class="card h-100 bg-dark text-light border-secondary shadow-sm">
+    <div class="card-body">
+        <!-- Encabezado con Icono y Nombre -->
+        <div class="d-flex align-items-center mb-3">
+            <div class="bg-secondary bg-opacity-25 rounded-circle p-3 me-3 text-center"
+                style="width: 60px; height: 60px;">
+                <i class="bi bi-person-fill fs-3 text-primary"></i>
+            </div>
+            <div>
+                <h5 class="card-title mb-1 fw-bold">{{ usuario.nombre }}</h5>
+                <p class="card-text text-secondary mb-0 small"><i class="bi bi-envelope me-1"></i> {{ usuario.email }}
+                </p>
+            </div>
+        </div>
+
+        <!-- Insignias de Rol y Estado -->
+        <div class="d-flex gap-2 mb-3 mt-4">
+            <span class="badge rounded-pill px-3 py-2" [class.bg-primary]="usuario.rol === 'admin'"
+                [class.bg-secondary]="usuario.rol === 'usuario'">
+                <i class="bi" [class.bi-shield-lock]="usuario.rol === 'admin'"
+                    [class.bi-person]="usuario.rol === 'usuario'"></i>
+                {{ usuario.rol | uppercase }}
+            </span>
+            <span class="badge rounded-pill px-3 py-2" [class.bg-success]="usuario.estado"
+                [class.bg-danger]="!usuario.estado">
+                {{ usuario.estado ? 'Activo' : 'Inactivo' }}
+            </span>
+        </div>
+    </div>
+
+    <!-- Botones de Acción -->
+    <div class="card-footer bg-transparent border-secondary d-flex justify-content-end gap-2 p-3">
+        <button class="btn btn-outline-info btn-sm px-3" (click)="onEditar()" title="Editar usuario">
+            <i class="bi bi-pencil me-1"></i> Editar
+        </button>
+        <button class="btn btn-sm px-3" [class.btn-outline-warning]="usuario.estado"
+            [class.btn-outline-success]="!usuario.estado" (click)="onCambiarEstado()"
+            [title]="usuario.estado ? 'Desactivar usuario' : 'Activar usuario'">
+            <i class="bi" [class.bi-ban]="usuario.estado" [class.bi-check-circle]="!usuario.estado"></i>
+            {{ usuario.estado ? 'Desactivar' : 'Activar' }}
+        </button>
+    </div>
+</div>
