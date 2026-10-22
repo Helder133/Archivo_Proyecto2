@@ -30,7 +30,7 @@ class ArchivoService {
                 const pathParent = partes.length > 0 ? `/${partes.join('/')}/` : '/';
 
                 const carpetaService = require('./carpeta.service');
-                const carpetaPadre = await carpetaService.findByNombreAndPath(nombreParent, pathParent);
+                const carpetaPadre = await carpetaService.findByNombreAndPath(nombreParent, pathParent, archivoData.usuarioId);
 
                 if (carpetaPadre) {
                     // Validacion de permisos, si el usuario no es el dueño original, debe tener permisos de edición
@@ -108,7 +108,7 @@ class ArchivoService {
 
         // Validacion de permisos, si el usuario no es el dueño original, debe tener permisos de lectura
         permisosService.verificarPermiso(archivo, usuarioId, permisosEnum.LECTURA);
-        
+
         await bitacoraService.registrarAccion(usuarioId, bitacoraEnum.CONSULTAR_REGISTROS, moduloAfectado.ARCHIVO, archivo.nombre, id, null);
         return archivo;
     }
@@ -203,6 +203,47 @@ class ArchivoService {
             // Pero el archivo nuevo se quedó flotando como basura. Lo eliminamos.
             console.error("Transacción fallida. Ejecutando limpieza del archivo huérfano...", error);
             await archivoRepository.eliminarBinariosGridFS([idGridFsNuevo]);
+            throw error;
+        } finally {
+            await session.endSession();
+        }
+    }
+
+    async actualizarNombre(id, nuevoNombre, usuarioId) {
+        if (!nuevoNombre || nuevoNombre.trim() === '') {
+            throw new Error('El nombre es requerido.');
+        }
+
+        const archivoExistente = await archivoRepository.findById(id);
+        if (!archivoExistente) {
+            throw new Error('Archivo no encontrado.');
+        }
+
+        // Si el nombre no cambió, no hacemos nada
+        if (archivoExistente.nombre === nuevoNombre.trim()) {
+            return true;
+        }
+
+        // Validacion de permisos, si el usuario no es el dueño original, debe tener permisos de edición
+        permisosService.verificarPermiso(archivoExistente, usuarioId, permisosEnum.EDITAR);
+
+        // Validar que el nuevo nombre no exista en la misma ruta
+        const existe = await archivoRepository.existeNombreEnLaMismaPath(nuevoNombre.trim(), archivoExistente.path);
+        if (existe) {
+            throw new Error(`Ya existe un archivo con el nombre "${nuevoNombre.trim()}" en esta ruta.`);
+        }
+
+        const session = await mongoose.startSession();
+
+        try {
+            await session.withTransaction(async () => {
+                await archivoRepository.update(id, { nombre: nuevoNombre.trim(), fechaModificacion: new Date() }, session);
+
+                await bitacoraService.registrarAccion(usuarioId, bitacoraEnum.MODIFICACION, moduloAfectado.ARCHIVO, `Renombrado de archivo: ${archivoExistente.nombre} a ${nuevoNombre}`, id, session);
+            });
+            return true;
+        } catch (error) {
+            console.error("Error al renombrar archivo:", error);
             throw error;
         } finally {
             await session.endSession();
@@ -334,7 +375,7 @@ class ArchivoService {
         try {
             await session.withTransaction(async () => {
                 await archivoRepository.eliminarCompartido(id, usuarioIdCompartido, session);
-                
+
                 const bitacoraService = require('./bitacora.service');
                 await bitacoraService.registrarAccion(usuarioIdEjecutor, bitacoraEnum.CAMBIO_PERMISO, moduloAfectado.ARCHIVO, archivoExistente.nombre, id, session);
             });

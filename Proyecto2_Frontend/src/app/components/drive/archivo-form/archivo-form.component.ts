@@ -24,10 +24,10 @@ export class ArchivoFormComponent implements OnInit {
   archivoSeleccionado: File | null = null;
 
   ngOnInit(): void {
-    const validadoresNombre = (this.modo === 'crear' || this.modo === 'renombrar') ? [Validators.required] : [];
+    const requiereNombre = this.modo === 'crear' || this.modo === 'renombrar';
 
     this.archivoForm = this.fb.group({
-      nombre: [this.archivoAEditar?.nombre || '', validadoresNombre]
+      nombre: [this.archivoAEditar?.nombre || '', requiereNombre ? Validators.required : []]
     });
   }
 
@@ -35,8 +35,7 @@ export class ArchivoFormComponent implements OnInit {
     const file = event.target.files[0];
     if (file) {
       this.archivoSeleccionado = file;
-      // Si el input de nombre está vacío, le sugerimos el nombre del archivo original
-      if (!this.archivoForm.get('nombre')?.value) {
+      if (this.modo === 'crear' && !this.archivoForm.get('nombre')?.value) {
         const nombreSinExt = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
         this.archivoForm.get('nombre')?.setValue(nombreSinExt);
       }

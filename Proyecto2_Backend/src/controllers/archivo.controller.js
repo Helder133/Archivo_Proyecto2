@@ -137,6 +137,17 @@ class ArchivoController {
         }
     }
 
+    async renombrarArchivo(req, res) {
+        try {
+            const usuarioId = req.usuario.id;
+            const { nombre } = req.body;
+            await archivoService.actualizarNombre(req.params.id, nombre, usuarioId);
+            res.json({ message: 'Nombre de archivo actualizado correctamente.' });
+        } catch (error) {
+            res.status(400).json({ error: error.message });
+        }
+    }
+
     async cambiarEstadoArchivo(req, res) {
         const usuarioId = req.usuario.id;
         try {

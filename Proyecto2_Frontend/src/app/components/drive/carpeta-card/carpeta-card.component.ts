@@ -15,13 +15,27 @@ export class CarpetaCardComponent {
 
   // Evento para cuando el usuario hace doble clic para entrar a la carpeta
   @Output() entrar = new EventEmitter<Carpeta>();
-  // Evento para abrir el menú de opciones (Renombrar, Eliminar, etc)
-  @Output() opciones = new EventEmitter<Carpeta>();
+
+  @Output() editar = new EventEmitter<Carpeta>();
+  @Output() eliminar = new EventEmitter<string>();
 
   get esCompartidoConmigo(): boolean {
     const miId = this.authService.currentUser()?._id;
     // Si el ID del creador de la carpeta es diferente a mi ID, es compartida
     return this.carpeta.usuarioId !== miId;
+  }
+
+  get miPermiso(): string {
+    if (!this.esCompartidoConmigo) return 'dueño';
+    const miId = this.authService.currentUser()?._id;
+    const colaborador = this.carpeta.compartidoCon.find((c: any) =>
+      c.usuarioId === miId || c.usuarioId?._id === miId
+    );
+    return colaborador ? colaborador.permiso : 'lectura';
+  }
+
+  get puedeEditar(): boolean {
+    return this.miPermiso === 'dueño' || this.miPermiso === 'editar';
   }
 
   onDblClick() {

@@ -22,8 +22,17 @@
             <small class="text-secondary">{{ carpeta.fechaCreacion | date:'dd/MM/yyyy' }}</small>
         </div>
 
-        <button class="btn btn-sm btn-link text-secondary" (click)="$event.stopPropagation(); opciones.emit(carpeta)">
-            <i class="bi bi-three-dots-vertical"></i>
-        </button>
+        <div class="d-flex gap-1">
+            @if (puedeEditar) {
+            <button class="btn btn-sm btn-link text-info" (click)="$event.stopPropagation(); editar.emit(carpeta)"
+                title="Renombrar">
+                <i class="bi bi-pencil"></i>
+            </button>
+            <button class="btn btn-sm btn-link text-danger"
+                (click)="$event.stopPropagation(); eliminar.emit(carpeta._id)" title="Mover a papelera">
+                <i class="bi bi-trash"></i>
+            </button>
+            }
+        </div>
     </div>
 </div>

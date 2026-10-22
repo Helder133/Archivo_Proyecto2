@@ -21,6 +21,7 @@ router.get('/archivo/:id', verificarToken, controllerArchivo.getArchivoById);
 
 router.put('/archivo/cambiar-permiso', verificarToken, controllerArchivo.cambiarPermisoDeCompartido);
 router.put('/archivo/contenido/:id', verificarToken, upload.single('archivoFisico'), controllerArchivo.actualizarContenido);
+router.put('/archivo/renombrar/:id', verificarToken, controllerArchivo.renombrarArchivo);
 
 router.patch('/archivo/cambiar-estado/:id', verificarToken, controllerArchivo.cambiarEstadoArchivo);
 

@@ -64,6 +64,10 @@ export class ArchivoService {
     return this.http.put(`${this.apiUrl}/contenido/${id}`, formData);
   }
 
+  renombrarArchivo(id: string, nombre: string): Observable<any> {
+    return this.http.put(`${this.apiUrl}/renombrar/${id}`, { nombre });
+  }
+
   cambiarEstadoArchivo(id: string): Observable<any> {
     return this.http.patch(`${this.apiUrl}/cambiar-estado/${id}`, {});
   }

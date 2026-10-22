@@ -102,7 +102,7 @@ class CarpetaService {
     }
 
     async findByNombreAndPath(nombre, path, usuarioId) {
-        const carpeta = await carpetaRepository.findByNombreAndPath(nombre, path);
+        const carpeta = await carpetaRepository.findByNombreAndPath(nombre, path, usuarioId);
         if (!carpeta) {
             throw new Error(`No se encontró la carpeta con nombre: ${nombre} y path: ${path}`);
         }

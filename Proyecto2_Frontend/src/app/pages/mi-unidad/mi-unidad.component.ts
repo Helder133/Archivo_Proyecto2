@@ -45,7 +45,7 @@ export class MiUnidadComponent implements OnInit {
   colaboradoresActuales = signal<any[]>([]);
 
   // Estado del formulario de archivo (crear o actualizar contenido)
-  modoFormArchivo = signal<'crear' | 'actualizar-contenido'>('crear');
+  modoFormArchivo = signal<'crear' | 'actualizar-contenido' | 'renombrar'>('crear');
 
   // Control Reactivo para el Buscador
   searchControl = new FormControl('');
@@ -173,14 +173,28 @@ export class MiUnidadComponent implements OnInit {
   }
 
   guardarCarpeta(datos: { nombre: string }) {
-    const dataConPath = { ...datos, path: this.currentPath() };
-    this.carpetaService.createCarpeta(dataConPath).subscribe({
-      next: () => {
-        this.mostrarFormCarpeta.set(false);
-        this.cargarContenido();
-      },
-      error: (err) => this.errorMessage.set(err.error?.error || err.error?.mensaje || 'Error al crear carpeta')
-    });
+    const carpetaActual = this.carpetaSeleccionada();
+
+    if (carpetaActual && carpetaActual._id) {
+      // MODO EDICIÓN (RENOMBRAR)
+      this.carpetaService.updateCarpeta(carpetaActual._id, { nombre: datos.nombre }).subscribe({
+        next: () => {
+          this.cerrarFormularios();
+          this.cargarContenido();
+        },
+        error: (err) => this.errorMessage.set(err.error?.mensaje || 'Error al renombrar carpeta')
+      });
+    } else {
+      // MODO CREACIÓN
+      const dataConPath = { ...datos, path: this.currentPath() };
+      this.carpetaService.createCarpeta(dataConPath).subscribe({
+        next: () => {
+          this.cerrarFormularios();
+          this.cargarContenido();
+        },
+        error: (err) => this.errorMessage.set(err.error?.error || err.error?.mensaje || 'Error al crear carpeta')
+      });
+    }
   }
 
   // --- CONTROL DE FORMULARIOS ARCHIVO ---
@@ -201,27 +215,37 @@ export class MiUnidadComponent implements OnInit {
   }
 
   guardarArchivo(datos: { nombre: string, archivoFisico?: File }) {
-    if (!datos.archivoFisico) return;
-
     if (this.modoFormArchivo() === 'crear') {
+      if (!datos.archivoFisico) return;
       const metaData = { nombre: datos.nombre, path: this.currentPath() };
+
       this.archivoService.createArchivo(metaData, datos.archivoFisico).subscribe({
         next: () => {
           this.cerrarFormularios();
           this.cargarContenido();
         },
-        error: (err) => this.errorMessage.set(err.error?.mensaje || 'Error al subir archivo')
+        error: (err) => this.errorMessage.set(err.error?.error || err.error?.mensaje || 'Error al subir archivo')
       });
-    } else {
-      // Modo actualizar contenido existente
+    } else if (this.modoFormArchivo() === 'actualizar-contenido') {
       const id = this.archivoSeleccionado()?._id;
-      if (id) {
+      if (id && datos.archivoFisico) {
         this.archivoService.actualizarContenido(id, datos.archivoFisico).subscribe({
           next: () => {
             this.cerrarFormularios();
             this.cargarContenido();
           },
           error: (err) => this.errorMessage.set(err.error?.mensaje || 'Error al actualizar contenido')
+        });
+      }
+    } else if (this.modoFormArchivo() === 'renombrar') {
+      const id = this.archivoSeleccionado()?._id;
+      if (id) {
+        this.archivoService.renombrarArchivo(id, datos.nombre).subscribe({
+          next: () => {
+            this.cerrarFormularios();
+            this.cargarContenido();
+          },
+          error: (err) => this.errorMessage.set(err.error?.mensaje || 'Error al renombrar archivo')
         });
       }
     }
@@ -339,4 +363,40 @@ export class MiUnidadComponent implements OnInit {
       error: (err) => this.errorMessage.set('Error al descargar el archivo físico.')
     });
   }
+
+  // --- ELIMINACIÓN LÓGICA (PAPELERA) ---
+  moverCarpetaAPapelera(id: string) {
+    if (confirm('¿Estás seguro de mover esta carpeta y todo su contenido a la papelera?')) {
+      this.carpetaService.cambiarEstadoCarpeta(id).subscribe({
+        next: () => this.cargarContenido(),
+        error: (err) => this.errorMessage.set(err.error?.mensaje || 'Error al mover a papelera')
+      });
+    }
+  }
+
+  moverArchivoAPapelera(id: string) {
+    if (confirm('¿Estás seguro de mover este archivo a la papelera?')) {
+      this.archivoService.cambiarEstadoArchivo(id).subscribe({
+        next: () => this.cargarContenido(),
+        error: (err) => this.errorMessage.set(err.error?.mensaje || 'Error al mover a papelera')
+      });
+    }
+  }
+
+  // --- EDICIÓN DE METADATA (RENOMBRAR) ---
+  abrirRenombrarCarpeta(carpeta: Carpeta) {
+    this.cerrarFormularios();
+    this.carpetaSeleccionada.set(carpeta);
+    this.mostrarFormCarpeta.set(true);
+    this.searchControl.disable();
+  }
+
+  abrirRenombrarArchivo(archivo: Archivo) {
+    this.cerrarFormularios();
+    this.archivoSeleccionado.set(archivo);
+    this.modoFormArchivo.set('renombrar');
+    this.mostrarFormArchivo.set(true);
+    this.searchControl.disable();
+  }
+
 }

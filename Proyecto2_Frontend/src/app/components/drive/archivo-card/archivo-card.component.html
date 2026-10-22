@@ -27,17 +27,25 @@
             <button class="btn btn-sm btn-link text-success" (click)="onDescargar()" title="Descargar">
                 <i class="bi bi-cloud-arrow-down-fill"></i>
             </button>
-            <button class="btn btn-sm btn-link text-warning" (click)="compartir.emit(archivo)" title="Compartir">
-                <i class="bi bi-person-plus-fill"></i>
-            </button>
-            <button class="btn btn-sm btn-link text-secondary" (click)="opciones.emit(archivo)" title="Opciones">
-                <i class="bi bi-three-dots-vertical"></i>
-            </button>
+
+            @if (puedeEditar) {
             <button class="btn btn-sm btn-link text-primary" (click)="editarContenido.emit(archivo)"
                 title="Actualizar contenido">
                 <i class="bi bi-file-earmark-arrow-up-fill"></i>
             </button>
-        </div>
+            <button class="btn btn-sm btn-link text-info" (click)="editarMetadata.emit(archivo)"
+                title="Renombrar archivo">
+                <i class="bi bi-pencil"></i>
+            </button>
+            <button class="btn btn-sm btn-link text-warning" (click)="compartir.emit(archivo)" title="Compartir">
+                <i class="bi bi-person-plus-fill"></i>
+            </button>
+            <button class="btn btn-sm btn-link text-danger" (click)="eliminar.emit(archivo._id)"
+                title="Mover a papelera">
+                <i class="bi bi-trash"></i>
+            </button>
+            }
+        </div>  
 
     </div>
 </div>

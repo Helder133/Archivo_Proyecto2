@@ -113,20 +113,21 @@
         <div class="spinner-border text-primary" role="status"></div>
     </div>
     } @else {
-    <!-- SECCIÓN CARPETAS (Se oculta si el filtro de extensión está activo) -->
+    <!-- SECCIÓN CARPETAS -->
     @if (carpetas().length > 0 && filtroActivo() === 'todo') {
     <h6 class="text-secondary mb-3 border-bottom border-secondary pb-2">Carpetas</h6>
     <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-xl-4 g-3 mb-4">
         @for (folder of carpetas(); track folder._id) {
         <div class="col">
-            <app-carpeta-card [carpeta]="folder" (entrar)="entrarACarpeta($event)">
+            <app-carpeta-card [carpeta]="folder" (entrar)="entrarACarpeta($event)"
+                (editar)="abrirRenombrarCarpeta($event)" (eliminar)="moverCarpetaAPapelera($event)">
             </app-carpeta-card>
         </div>
         }
     </div>
     }
 
-    <!-- SECCIÓN ARCHIVOS (El título cambia dependiendo del filtro) -->
+    <!-- SECCIÓN ARCHIVOS -->
     @if (archivos().length > 0) {
     <h6 class="text-secondary mb-3 border-bottom border-secondary pb-2 mt-4">
         {{ filtroActivo() === 'todo' ? 'Archivos' : 'Archivos ' + filtroActivo() }}
@@ -135,27 +136,11 @@
         @for (file of archivos(); track file._id) {
         <div class="col">
             <app-archivo-card [archivo]="file" (descargar)="descargarArchivo($event)"
-                (editarContenido)="abrirActualizarContenido($event)" (compartir)="abrirCompartirArchivo($event)">
+                (editarContenido)="abrirActualizarContenido($event)" (editarMetadata)="abrirRenombrarArchivo($event)"
+                (compartir)="abrirCompartirArchivo($event)" (eliminar)="moverArchivoAPapelera($event)">
             </app-archivo-card>
         </div>
         }
-    </div>
-    }
-
-    <!-- ESTADO VACÍO DINÁMICO -->
-    @if (carpetas().length === 0 && archivos().length === 0) {
-    <div class="text-center py-5 mt-5">
-        <i class="bi bi-search text-secondary opacity-50" style="font-size: 5rem;"></i>
-        <h5 class="text-secondary mt-3">
-            @if (searchControl.value) { No se encontraron resultados }
-            @else if (filtroActivo() !== 'todo') { No tienes archivos tipo {{ filtroActivo() }} aquí }
-            @else { Esta ubicación está vacía }
-        </h5>
-        <p class="text-secondary">
-            @if (searchControl.value) { Intenta con otro nombre }
-            @else if (filtroActivo() !== 'todo') { Sube un archivo nuevo }
-            @else { Sube archivos o crea carpetas nuevas }
-        </p>
     </div>
     }
     }
