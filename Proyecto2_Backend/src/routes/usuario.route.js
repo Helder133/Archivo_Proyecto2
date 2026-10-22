@@ -8,6 +8,7 @@ router.post('/usuario', verificarToken, controllerUsuario.controllerCreateUsuari
 
 router.get('/usuario', verificarToken, controllerUsuario.controllerGetAllUsuarios);
 router.get('/usuario/buscar/:coincidence', verificarToken, controllerUsuario.controllerGetUsuarioByCoincidence);
+router.get('/usuario/disponibles/:tipo/:recursoId', verificarToken, controllerUsuario.controllerGetUsuariosDisponibles);
 router.get('/usuario/:id', verificarToken, controllerUsuario.controllerGetUsuarioById);
 
 router.put('/usuario/:id', verificarToken, controllerUsuario.controllerUpdateUsuario);

@@ -36,12 +36,15 @@ class ArchivoRepository {
                 { usuarioId: usuarioIdEjecutor },
                 { "compartidoCon.usuarioId": usuarioIdEjecutor }
             ]
-        }).lean();
+        })
+        .populate('compartidoCon.usuarioId', 'nombre email').lean();
     }
 
     async findById(id) {
         if (!mongoose.Types.ObjectId.isValid(id)) return null;
-        return await ArchivoModel.findOne({ _id: id, estado: true }).lean();
+        return await ArchivoModel.findOne({ _id: id, estado: true })
+            .populate('compartidoCon.usuarioId', 'nombre email')
+            .lean();
     }
 
     async findByNombreCoincidencia(coincidencia, usuarioIdEjecutor) {
@@ -52,7 +55,8 @@ class ArchivoRepository {
                 { usuarioId: usuarioIdEjecutor },
                 { "compartidoCon.usuarioId": usuarioIdEjecutor }
             ]
-        }).lean();
+        })
+        .populate('compartidoCon.usuarioId', 'nombre email').lean();
     }
 
     async findByExtension(extension, usuarioIdEjecutor) {
@@ -63,7 +67,9 @@ class ArchivoRepository {
                 { usuarioId: usuarioIdEjecutor },
                 { "compartidoCon.usuarioId": usuarioIdEjecutor }
             ]
-        }).lean();
+        })
+        .populate('compartidoCon.usuarioId', 'nombre email')
+        .lean();
     }
 
     async findPapeleria(usuarioIdEjecutor) {
@@ -84,7 +90,9 @@ class ArchivoRepository {
                 { usuarioId: usuarioIdEjecutor },
                 { "compartidoCon.usuarioId": usuarioIdEjecutor }
             ]
-        }).lean();
+        })
+        .populate('compartidoCon.usuarioId', 'nombre email')
+        .lean();
     }
 
     async findCompartidosConUsuario(usuarioId) {
@@ -96,7 +104,7 @@ class ArchivoRepository {
 
     async validarCompartidoCon(archivoId, usuarioId) {
         if (!mongoose.Types.ObjectId.isValid(archivoId) || !mongoose.Types.ObjectId.isValid(usuarioId)) return false;
-        
+
         const result = await ArchivoModel.exists({
             _id: archivoId,
             "compartidoCon.usuarioId": usuarioId

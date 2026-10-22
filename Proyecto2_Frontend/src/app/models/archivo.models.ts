@@ -1,5 +1,12 @@
 import { permisoEnum, tipoArchivoEnum } from "./enums/enums.emun";
 
+export interface Colaborador {
+    usuarioId: string;
+    nombre: string;
+    email: string;
+    permiso: string;
+}
+
 export interface PermisoCompartido {
     usuarioId: string;
     permiso: permisoEnum;

@@ -1,10 +1,17 @@
 <div class="container-fluid mt-3">
 
-    <!-- Header: Título, Migas de Pan y Botones de Acción -->
-    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <!-- Header: Título, Migas de Pan, Buscador y Botones de Acción -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-3">
 
         <div class="d-flex align-items-center gap-2">
             <h3 class="mb-0 me-3 text-light">Mi Unidad</h3>
+
+            <!-- Si está buscando, mostramos un título. Si no, mostramos las migas de pan -->
+            @if (searchControl.value && searchControl.value.trim() !== '') {
+            <span class="badge bg-info text-dark fs-6 px-3 py-2">
+                <i class="bi bi-search me-2"></i> Resultados de búsqueda
+            </span>
+            } @else {
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb mb-0 bg-dark px-3 py-2 rounded border border-secondary">
                     <li class="breadcrumb-item">
@@ -24,20 +31,50 @@
                     }
                 </ol>
             </nav>
+            }
         </div>
 
-        <!-- Solo mostramos los botones si NO hay un formulario abierto -->
-        @if (!mostrarFormCarpeta() && !mostrarFormArchivo()) {
-        <div class="d-flex gap-2">
-            <button class="btn btn-outline-info" (click)="abrirNuevaCarpeta()">
+        <!-- Solo mostramos los botones y el buscador si NO hay un formulario abierto -->
+        @if (!mostrarFormCarpeta() && !mostrarFormArchivo() && !mostrarFormCompartir()) {
+        <div class="d-flex gap-2 flex-wrap">
+
+            <!-- Barra de búsqueda reactiva -->
+            <div class="input-group" style="max-width: 300px;">
+                <span class="input-group-text bg-dark text-secondary border-secondary">
+                    <i class="bi bi-search"></i>
+                </span>
+                <input type="text" class="form-control bg-dark text-light border-secondary"
+                    placeholder="Buscar carpetas o archivos..." [formControl]="searchControl">
+            </div>
+
+            <!-- Botones de Acción -->
+            <button class="btn btn-outline-info text-nowrap" (click)="abrirNuevaCarpeta()">
                 <i class="bi bi-folder-plus me-1"></i> Nueva Carpeta
             </button>
-            <button class="btn btn-primary" (click)="abrirSubirArchivo()">
+            <button class="btn btn-primary text-nowrap" (click)="abrirSubirArchivo()">
                 <i class="bi bi-cloud-arrow-up me-1"></i> Subir Archivo
             </button>
         </div>
         }
     </div>
+
+    <!-- Filtros por Extensión (Solo visibles si no hay formularios abiertos) -->
+    @if (!mostrarFormCarpeta() && !mostrarFormArchivo() && !mostrarFormCompartir()) {
+    <div class="d-flex gap-2 mb-4">
+        <button class="btn btn-sm rounded-pill px-3" [class.btn-primary]="filtroActivo() === 'todo'"
+            [class.btn-outline-secondary]="filtroActivo() !== 'todo'" (click)="filtrarPorExtension('todo')">
+            Todos
+        </button>
+        <button class="btn btn-sm rounded-pill px-3" [class.btn-info]="filtroActivo() === '.txt'"
+            [class.btn-outline-secondary]="filtroActivo() !== '.txt'" (click)="filtrarPorExtension('.txt')">
+            <i class="bi bi-filetype-txt me-1"></i> Textos (.txt)
+        </button>
+        <button class="btn btn-sm rounded-pill px-3" [class.btn-primary]="filtroActivo() === '.md'"
+            [class.btn-outline-secondary]="filtroActivo() !== '.md'" (click)="filtrarPorExtension('.md')">
+            <i class="bi bi-filetype-md me-1"></i> Markdown (.md)
+        </button>
+    </div>
+    }
 
     <!-- CONTROL DE VISTAS (Formularios vs Cuadrícula) -->
     @if (mostrarFormCarpeta()) {
@@ -48,12 +85,23 @@
             </app-carpeta-form>
         </div>
     </div>
-    }
-    @else if (mostrarFormArchivo()) {
+    } @else if (mostrarFormCompartir()) {
     <div class="row justify-content-center">
         <div class="col-md-6 col-lg-5">
-            <app-archivo-form [archivoAEditar]="archivoSeleccionado()" [backendError]="errorMessage()"
-                (formSubmit)="guardarArchivo($event)" (formCancel)="cerrarFormularios()">
+            <app-compartir-form [usuariosDisponibles]="usuariosDisponibles()"
+                [colaboradoresActuales]="colaboradoresActuales()" [nombreRecurso]="recursoACompartir()?.nombre || ''"
+                [backendError]="errorMessage()" (formSubmit)="guardarCompartir($event)"
+                (cambiarPermiso)="actualizarPermisoColaborador($event)"
+                (revocarAcceso)="revocarAccesoColaborador($event)" (formCancel)="cerrarFormularios()">
+            </app-compartir-form>
+        </div>
+    </div>
+    } @else if (mostrarFormArchivo()) {
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <app-archivo-form [archivoAEditar]="archivoSeleccionado()" [modo]="modoFormArchivo()"
+                [backendError]="errorMessage()" (formSubmit)="guardarArchivo($event)"
+                (formCancel)="cerrarFormularios()">
             </app-archivo-form>
         </div>
     </div>
@@ -65,8 +113,8 @@
         <div class="spinner-border text-primary" role="status"></div>
     </div>
     } @else {
-    <!-- SECCIÓN CARPETAS -->
-    @if (carpetas().length > 0) {
+    <!-- SECCIÓN CARPETAS (Se oculta si el filtro de extensión está activo) -->
+    @if (carpetas().length > 0 && filtroActivo() === 'todo') {
     <h6 class="text-secondary mb-3 border-bottom border-secondary pb-2">Carpetas</h6>
     <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-xl-4 g-3 mb-4">
         @for (folder of carpetas(); track folder._id) {
@@ -78,26 +126,36 @@
     </div>
     }
 
-    <!-- SECCIÓN ARCHIVOS -->
+    <!-- SECCIÓN ARCHIVOS (El título cambia dependiendo del filtro) -->
     @if (archivos().length > 0) {
-    <h6 class="text-secondary mb-3 border-bottom border-secondary pb-2 mt-4">Archivos</h6>
+    <h6 class="text-secondary mb-3 border-bottom border-secondary pb-2 mt-4">
+        {{ filtroActivo() === 'todo' ? 'Archivos' : 'Archivos ' + filtroActivo() }}
+    </h6>
     <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-xl-4 g-3">
         @for (file of archivos(); track file._id) {
         <div class="col">
-            <!-- Instanciamos el componente real del archivo -->
-            <app-archivo-card [archivo]="file" (descargar)="descargarArchivo($event)">
+            <app-archivo-card [archivo]="file" (descargar)="descargarArchivo($event)"
+                (editarContenido)="abrirActualizarContenido($event)" (compartir)="abrirCompartirArchivo($event)">
             </app-archivo-card>
         </div>
         }
     </div>
     }
 
-    <!-- ESTADO VACÍO -->
+    <!-- ESTADO VACÍO DINÁMICO -->
     @if (carpetas().length === 0 && archivos().length === 0) {
     <div class="text-center py-5 mt-5">
-        <i class="bi bi-folder2-open text-secondary opacity-50" style="font-size: 5rem;"></i>
-        <h5 class="text-secondary mt-3">Esta ubicación está vacía</h5>
-        <p class="text-secondary">Sube archivos o crea carpetas nuevas</p>
+        <i class="bi bi-search text-secondary opacity-50" style="font-size: 5rem;"></i>
+        <h5 class="text-secondary mt-3">
+            @if (searchControl.value) { No se encontraron resultados }
+            @else if (filtroActivo() !== 'todo') { No tienes archivos tipo {{ filtroActivo() }} aquí }
+            @else { Esta ubicación está vacía }
+        </h5>
+        <p class="text-secondary">
+            @if (searchControl.value) { Intenta con otro nombre }
+            @else if (filtroActivo() !== 'todo') { Sube un archivo nuevo }
+            @else { Sube archivos o crea carpetas nuevas }
+        </p>
     </div>
     }
     }

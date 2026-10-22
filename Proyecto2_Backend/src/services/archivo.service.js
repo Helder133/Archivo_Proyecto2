@@ -13,7 +13,7 @@ class ArchivoService {
         }
 
         const usuarioService = require('./usuario.service');
-        const usuario = await usuarioService.getUsuarioById(archivoData.usuarioId);
+        const usuario = await usuarioService.getUsuarioById(archivoData.usuarioId, archivoData.usuarioId);
         if (!usuario) throw new Error('Usuario no encontrado.');
 
         const exist = await archivoRepository.existeNombreEnLaMismaPath(archivoData.nombre, archivoData.path);
@@ -73,6 +73,7 @@ class ArchivoService {
         const session = await mongoose.startSession();
 
         try {
+            let idNuevoArchivo = null;
             await session.withTransaction(async () => {
                 idNuevoArchivo = await archivoRepository.create(nuevoArchivo, session);
                 await bitacoraService.registrarAccion(
@@ -120,14 +121,14 @@ class ArchivoService {
         const regex = new RegExp(textoEscapado, 'i'); // 'i' para que no distinga mayúsculas y minúsculas
 
         await bitacoraService.registrarAccion(usuarioId, bitacoraEnum.CONSULTAR_REGISTROS, moduloAfectado.ARCHIVO, `Búsqueda por nombre: ${coincidencia}`, null, null);
-        return await archivoRepository.findByNombreCoincidencia(regex);
+        return await archivoRepository.findByNombreCoincidencia(regex, usuarioId);
     }
 
     async getArchivosByExtension(extension, usuarioId) {
         if (!extension || extension.trim() === '') return [];
         const extFormat = extension.startsWith('.') ? extension.trim() : `.${extension.trim()}`;
         await bitacoraService.registrarAccion(usuarioId, bitacoraEnum.CONSULTAR_REGISTROS, moduloAfectado.ARCHIVO, `Búsqueda por extensión: ${extFormat}`, null, null);
-        return await archivoRepository.findByExtension(extFormat);
+        return await archivoRepository.findByExtension(extFormat, usuarioId);
     }
 
     async getPapeleria(usuarioId) {

@@ -84,6 +84,20 @@ class UsuarioController {
             });
         }
     }
+
+    async controllerGetUsuariosDisponibles(req, res) {
+        try {
+            const { tipo, recursoId } = req.params;
+            const usuarios = await usuarioService.getUsuariosDisponibles(tipo, recursoId);
+
+            res.status(200).json(usuarios);
+        } catch (error) {
+            res.status(400).json({
+                mensaje: error.message
+            });
+        }
+    }
+
 }
 
 module.exports = new UsuarioController();

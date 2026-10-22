@@ -1,0 +1,85 @@
+<div class="card shadow-sm border-secondary mb-4">
+    <div class="card-header bg-dark text-white border-secondary d-flex justify-content-between align-items-center">
+        <h6 class="mb-0"><i class="bi bi-share me-2"></i>Compartir: {{ nombreRecurso }}</h6>
+        <button type="button" class="btn-close btn-close-white" (click)="formCancel.emit()"></button>
+    </div>
+
+    @if (backendError) {
+    <div class="alert alert-danger m-3 py-2"><i class="bi bi-exclamation-triangle me-2"></i>{{ backendError }}</div>
+    }
+
+    <div class="card-body bg-dark text-light">
+        <!-- SECCIÓN 1: INVITAR NUEVOS -->
+        <form [formGroup]="compartirForm" (ngSubmit)="onSubmit()">
+            <div class="mb-3">
+                <label class="form-label text-secondary small">Invitar personas</label>
+                <select class="form-select bg-dark text-light border-secondary" formControlName="usuarioId"
+                    [class.is-invalid]="compartirForm.get('usuarioId')?.invalid && compartirForm.get('usuarioId')?.touched">
+                    <option value="" disabled>-- Elige un colaborador --</option>
+                    @for (user of usuariosDisponibles; track user._id || user._id) {
+                    <option [value]="user._id || user._id">{{ user.email }} ({{ user.nombre }})</option>
+                    } @empty {
+                    <option value="" disabled>No hay usuarios disponibles para invitar</option>
+                    }
+                </select>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label text-secondary small">Nivel de Permiso inicial</label>
+                <select class="form-select bg-dark text-light border-secondary" formControlName="permiso">
+                    <option value="lectura">Lector</option>
+                    <option value="comentar">Comentarista</option>
+                    <option value="editar">Editor</option>
+                </select>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2 mb-3">
+                <button type="button" class="btn btn-outline-secondary btn-sm"
+                    (click)="formCancel.emit()">Cerrar</button>
+                <button type="submit" class="btn btn-primary btn-sm"
+                    [disabled]="usuariosDisponibles.length === 0">Invitar</button>
+            </div>
+        </form>
+
+        <hr class="border-secondary my-4">
+
+        <!-- SECCIÓN 2: GESTIÓN DE ACCESOS ACTUALES -->
+        <h6 class="mb-3 text-secondary small">Personas con acceso</h6>
+        <div class="d-flex flex-column gap-3">
+            @for (colab of colaboradoresActuales; track colab.usuarioId) {
+            <div class="d-flex align-items-center justify-content-between p-2 border border-secondary rounded">
+                <!-- Info del Usuario -->
+                <div class="d-flex align-items-center">
+                    <div class="bg-secondary bg-opacity-25 rounded-circle p-2 me-3 text-center d-flex align-items-center justify-content-center"
+                        style="width: 35px; height: 35px;">
+                        <i class="bi bi-person text-light"></i>
+                    </div>
+                    <div class="text-truncate" style="max-width: 150px;">
+                        <div class="fw-bold small text-truncate" [title]="colab.nombre">{{ colab.nombre }}</div>
+                        <div class="text-secondary" style="font-size: 0.75rem;" [title]="colab.email">{{ colab.email }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Controles de Permiso -->
+                <div class="d-flex align-items-center gap-2">
+                    <select class="form-select form-select-sm bg-dark text-light border-secondary" style="width: auto;"
+                        [value]="colab.permiso" (change)="onCambiarPermiso(colab.usuarioId, $event)">
+                        <option value="lectura">Lector</option>
+                        <option value="comentar">Comentarista</option>
+                        <option value="editar">Editor</option>
+                    </select>
+                    <button class="btn btn-sm btn-outline-danger" title="Revocar acceso"
+                        (click)="onRevocar(colab.usuarioId)">
+                        <i class="bi bi-person-x"></i>
+                    </button>
+                </div>
+            </div>
+            } @empty {
+            <div class="text-center text-secondary small py-2">Nadie más tiene acceso. Eres el único administrador.
+            </div>
+            }
+        </div>
+
+    </div>
+</div>

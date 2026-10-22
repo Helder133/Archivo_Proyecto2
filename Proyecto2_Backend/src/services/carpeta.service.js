@@ -144,7 +144,7 @@ class CarpetaService {
         const textoEscapado = coincidencia.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const regex = new RegExp(textoEscapado, 'i'); // 'i' para que no distinga mayúsculas y minúsculas
 
-        return await carpetaRepository.findByNombreCoincidencia(regex);
+        return await carpetaRepository.findByNombreCoincidencia(regex, usuarioId);
     }
 
     async updateCarpeta(id, data, usuarioId) {

@@ -24,6 +24,10 @@ export class UsuarioService {
     return this.http.get<Usuario[]>(`${this.apiUrl}/buscar/${coincidence}`);
   }
 
+  getUsuariosDisponibles(tipo: 'archivo' | 'carpeta', recursoId: string): Observable<Usuario[]> {
+    return this.http.get<Usuario[]>(`${this.apiUrl}/disponibles/${tipo}/${recursoId}`);
+  }
+
   createUsuario(usuario: Partial<Usuario>): Observable<any> {
     return this.http.post(this.apiUrl, { usuario });
   }

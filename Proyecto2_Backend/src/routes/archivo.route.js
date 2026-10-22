@@ -19,8 +19,8 @@ router.get('/archivo/extension/:ext', verificarToken, controllerArchivo.getArchi
 router.get('/archivo/descargar/:id', verificarToken, controllerArchivo.descargarArchivo);
 router.get('/archivo/:id', verificarToken, controllerArchivo.getArchivoById);
 
-router.put('/archivo/contenido/:id', verificarToken, upload.single('archivoFisico'), controllerArchivo.actualizarContenido);
 router.put('/archivo/cambiar-permiso', verificarToken, controllerArchivo.cambiarPermisoDeCompartido);
+router.put('/archivo/contenido/:id', verificarToken, upload.single('archivoFisico'), controllerArchivo.actualizarContenido);
 
 router.patch('/archivo/cambiar-estado/:id', verificarToken, controllerArchivo.cambiarEstadoArchivo);
 

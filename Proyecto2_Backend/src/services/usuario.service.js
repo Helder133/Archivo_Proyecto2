@@ -168,11 +168,48 @@ class UsuarioService {
 
         return usuario;
     }
-    
+
     async getAllUsuarios(usuarioId) {
         await bitacoraService.registrarAccion(usuarioId, bitacoraEnum.CONSULTAR_REGISTROS, moduloAfectado.USUARIO, 'Consulta de todos los usuarios');
         return await usuarioRepository.findAll();
     }
+
+    async getUsuariosDisponibles(tipo, recursoId) {
+        const mongoose = require('mongoose');
+        if (!mongoose.Types.ObjectId.isValid(recursoId)) {
+            throw new Error('ID de recurso inválido.');
+        }
+
+        let recurso = null;
+
+        // 1. Buscamos el recurso dependiendo del tipo
+        if (tipo === 'archivo') {
+            const archivoRepository = require('../repository/archivo.repository');
+            recurso = await archivoRepository.findByIdSinEstado(recursoId);
+        } else if (tipo === 'carpeta') {
+            const carpetaRepository = require('../repository/carpeta.repository');
+            recurso = await carpetaRepository.findByIdSinEstado(recursoId);
+        } else {
+            throw new Error('Tipo de recurso no válido. Debe ser "archivo" o "carpeta".');
+        }
+
+        if (!recurso) {
+            throw new Error('Recurso no encontrado.');
+        }
+
+        // 2. Extraemos los IDs que NO deben aparecer (el dueño)
+        const idsExcluidos = [recurso.usuarioId];
+
+        // 3. Agregamos a la lista de excluidos a los que ya son colaboradores
+        if (recurso.compartidoCon && recurso.compartidoCon.length > 0) {
+            recurso.compartidoCon.forEach(colaborador => {
+                idsExcluidos.push(colaborador.usuarioId);
+            });
+        }
+
+        return await usuarioRepository.findUsuariosExcluyendoIds(idsExcluidos);
+    }
+
 }
 
 module.exports = new UsuarioService();

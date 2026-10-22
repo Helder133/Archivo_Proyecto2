@@ -24,8 +24,69 @@ export class ArchivoService {
     formData.append('nombre', archivoData.nombre || '');
     formData.append('path', archivoData.path || '/');
     formData.append('usuarioId', archivoData.usuarioId || ''); // Aunque el backend lo sobrescribirá con el token
-    
+
     return this.http.post(this.apiUrl, formData);
+  }
+
+  getAllArchivos(): Observable<Archivo[]> {
+    return this.http.get<Archivo[]>(this.apiUrl);
+  }
+
+  getPapeleria(): Observable<Archivo[]> {
+    return this.http.get<Archivo[]>(`${this.apiUrl}/papeleria`);
+  }
+
+  getArchivosByNombre(nombre: string): Observable<Archivo[]> {
+    return this.http.get<Archivo[]>(`${this.apiUrl}/buscar/${nombre}`);
+  }
+
+  getArchivosByExtension(ext: string): Observable<Archivo[]> {
+    return this.http.get<Archivo[]>(`${this.apiUrl}/extension/${ext}`);
+  }
+
+  getArchivoById(id: string): Observable<Archivo> {
+    return this.http.get<Archivo>(`${this.apiUrl}/${id}`);
+  }
+
+  // --- DESCARGA DE ARCHIVOS ---
+
+  descargarArchivo(id: string): Observable<Blob> {
+    // Es VITAL pedir responseType: 'blob' para manejar archivos binarios en Angular
+    return this.http.get(`${this.apiUrl}/descargar/${id}`, { responseType: 'blob' });
+  }
+
+  // --- EDICIÓN Y ESTADO ---
+
+  actualizarContenido(id: string, archivoFisico: File): Observable<any> {
+    const formData = new FormData();
+    formData.append('archivoFisico', archivoFisico);
+    
+    return this.http.put(`${this.apiUrl}/contenido/${id}`, formData);
+  }
+
+  cambiarEstadoArchivo(id: string): Observable<any> {
+    return this.http.patch(`${this.apiUrl}/cambiar-estado/${id}`, {});
+  }
+
+  eliminarArchivo(id: string): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/${id}`);
+  }
+
+  // --- GESTIÓN DE PERMISOS (COMPARTIDO) ---
+
+  compartirArchivo(id: string, compartido: any[]): Observable<any> {
+    return this.http.post(`${this.apiUrl}/compartir`, { id, compartido });
+  }
+
+  cambiarPermisoDeCompartido(id: string, compartido: any): Observable<any> {
+    return this.http.put(`${this.apiUrl}/cambiar-permiso`, { id, compartido });
+  }
+
+  eliminarCompartido(id: string, usuarioId: string): Observable<any> {
+    // Para enviar un body en una petición DELETE en Angular, se usa el objeto "options"
+    return this.http.delete(`${this.apiUrl}/eliminar-compartido`, {
+      body: { id, usuarioId }
+    });
   }
 
 }

@@ -103,6 +103,14 @@ class UsuarioRepository {
         return await UsuarioModel.find().select('-password').lean();
     }
 
+    async findUsuariosExcluyendoIds(idsExcluidos) {
+        return await UsuarioModel.find({
+            _id: { $nin: idsExcluidos },
+            estado: true,
+            rol: 'usuario'
+        }).select('-password').lean();
+    }
+
 }
 
 module.exports = new UsuarioRepository();

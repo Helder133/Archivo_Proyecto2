@@ -46,7 +46,7 @@ class LoginService {
         return {
             token,
             usuario: {
-                id: usuario._id.toString(),
+                _id: usuario._id.toString(),
                 nombre: usuario.nombre,
                 email: usuario.email,
                 rol: usuario.rol,
