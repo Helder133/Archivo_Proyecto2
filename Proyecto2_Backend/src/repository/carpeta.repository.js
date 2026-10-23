@@ -16,7 +16,8 @@ class CarpetaRepository {
 
     async findById(id) {
         if (!mongoose.Types.ObjectId.isValid(id)) return null;
-        return await CarpetaModel.findOne({ _id: id, estado: true }).lean();
+        return await CarpetaModel.findOne({ _id: id, estado: true }).populate('compartidoCon.usuarioId', 'nombre email')
+        .lean();
     }
 
     async findByIdSinEstado(id) {
@@ -32,7 +33,8 @@ class CarpetaRepository {
                 { usuarioId: usuarioIdEjecutor },
                 { "compartidoCon.usuarioId": usuarioIdEjecutor }
             ]
-        }).lean();
+        }).populate('compartidoCon.usuarioId', 'nombre email')
+        .lean();
     }
 
     async findPapeleria(usuarioIdEjecutor) {
@@ -62,14 +64,17 @@ class CarpetaRepository {
                 { usuarioId: usuarioIdEjecutor },
                 { "compartidoCon.usuarioId": usuarioIdEjecutor }
             ]
-        }).lean();
+        }).populate('compartidoCon.usuarioId', 'nombre email')
+        .lean();
     }
 
     async findCompartidosConUsuario(usuarioId) {
         return await CarpetaModel.find({
             "compartidoCon.usuarioId": usuarioId,
             estado: true
-        }).lean();
+        })
+        .populate('compartidoCon.usuarioId', 'nombre email')
+        .lean();
     }
 
     async update(id, data, session = null) {

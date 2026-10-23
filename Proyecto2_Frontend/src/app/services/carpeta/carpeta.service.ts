@@ -58,10 +58,9 @@ export class CarpetaService {
     return this.http.put(`${this.apiUrl}/cambiar-permiso`, { id, compartido });
   }
 
-  eliminarCompartido(id: string, usuarioId: string): Observable<any> {
-    // Angular requiere usar el objeto de opciones para enviar un body en un DELETE
+  eliminarCompartido(id: string, usuarioIdCompartido: string): Observable<any> {
     return this.http.delete(`${this.apiUrl}/eliminar-compartido`, {
-      body: { id, usuarioId }
+      body: { id, usuarioIdCompartido }
     });
   }
 

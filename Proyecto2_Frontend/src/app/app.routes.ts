@@ -25,7 +25,8 @@ export const routes: Routes = [
         component: AdminLayoutComponent,
         children: [
             { path: '', redirectTo: 'mi-unidad', pathMatch: 'full' },
-            {path: 'mi-unidad', loadComponent: () => import('./pages/mi-unidad/mi-unidad.component').then(m => m.MiUnidadComponent)}
+            { path: 'mi-unidad', loadComponent: () => import('./pages/mi-unidad/mi-unidad.component').then(m => m.MiUnidadComponent) },
+            { path: 'compartido', loadComponent: () => import('./pages/compartido/compartido.component').then(m => m.CompartidoComponent) }
         ]
     },
     { path: '', redirectTo: 'login', pathMatch: 'full' },

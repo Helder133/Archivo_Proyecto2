@@ -13,11 +13,10 @@ export class CarpetaCardComponent {
 
   @Input({ required: true }) carpeta!: Carpeta;
 
-  // Evento para cuando el usuario hace doble clic para entrar a la carpeta
   @Output() entrar = new EventEmitter<Carpeta>();
-
   @Output() editar = new EventEmitter<Carpeta>();
   @Output() eliminar = new EventEmitter<string>();
+  @Output() compartir = new EventEmitter<Carpeta>();
 
   get esCompartidoConmigo(): boolean {
     const miId = this.authService.currentUser()?._id;

@@ -1,0 +1,92 @@
+<div class="container-fluid mt-3">
+    <div class="d-flex align-items-center mb-4">
+        <i class="bi bi-people-fill fs-3 text-info me-3"></i>
+        <h3 class="mb-0 text-light">Compartidos Conmigo</h3>
+    </div>
+
+    @if (errorMessage()) {
+    <div class="alert alert-danger"><i class="bi bi-exclamation-triangle me-2"></i>{{ errorMessage() }}</div>
+    }
+
+    <!-- CONTROL DE VISTAS (Formularios y Visor) -->
+    @if (mostrarVisor()) {
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-7">
+            <app-visor-archivo [nombre]="archivoSeleccionado()?.nombre || ''" [tipo]="archivoSeleccionado()?.tipo || ''"
+                [blobData]="blobVisualizacion()" (cerrar)="cerrarFormularios()">
+            </app-visor-archivo>
+        </div>
+    </div>
+    } @else if (mostrarFormArchivo()) {
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <app-archivo-form [archivoAEditar]="archivoSeleccionado()" [modo]="modoFormArchivo()"
+                [backendError]="errorMessage()" (formSubmit)="guardarArchivo($event)"
+                (formCancel)="cerrarFormularios()">
+            </app-archivo-form>
+        </div>
+    </div>
+    } @else if (mostrarFormCarpeta()) { <!-- NUEVO BLOQUE FORMULARIO CARPETA -->
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <app-carpeta-form [carpetaAEditar]="carpetaSeleccionada()" [backendError]="errorMessage()"
+                (formSubmit)="guardarCarpeta($event)" (formCancel)="cerrarFormularios()">
+            </app-carpeta-form>
+        </div>
+    </div>
+    } @else if (mostrarFormCompartir()) {
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <app-compartir-form [usuariosDisponibles]="usuariosDisponibles()"
+                [colaboradoresActuales]="colaboradoresActuales()" [nombreRecurso]="recursoACompartir()?.nombre || ''"
+                [backendError]="errorMessage()" (formSubmit)="guardarCompartir($event)"
+                (cambiarPermiso)="actualizarPermisoColaborador($event)"
+                (revocarAcceso)="revocarAccesoColaborador($event)" (formCancel)="cerrarFormularios()">
+            </app-compartir-form>
+        </div>
+    </div>
+    } @else {
+
+    @if (cargando()) {
+    <div class="text-center py-5">
+        <div class="spinner-border text-info" role="status"></div>
+    </div>
+    } @else {
+
+    @if (carpetas().length === 0 && archivos().length === 0) {
+    <div class="text-center py-5 mt-5">
+        <i class="bi bi-person-heart text-secondary opacity-50" style="font-size: 5rem;"></i>
+        <h5 class="text-secondary mt-3">Aún no hay archivos compartidos contigo</h5>
+    </div>
+    } @else {
+
+    @if (carpetas().length > 0) {
+    <h6 class="text-secondary mb-3 border-bottom border-secondary pb-2">Carpetas</h6>
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-xl-4 g-3 mb-4">
+        @for (folder of carpetas(); track folder._id) {
+        <div class="col">
+            <app-carpeta-card [carpeta]="folder" (entrar)="entrarACarpeta($event)"
+                (editar)="abrirRenombrarCarpeta($event)" (compartir)="abrirCompartirCarpeta($event)">
+            </app-carpeta-card>
+        </div>
+        }
+    </div>
+    }
+
+    @if (archivos().length > 0) {
+    <h6 class="text-secondary mb-3 border-bottom border-secondary pb-2">Archivos</h6>
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-xl-4 g-3">
+        @for (file of archivos(); track file._id) {
+        <div class="col">
+            <app-archivo-card [archivo]="file" (visualizar)="abrirVisorArchivo($event)"
+                (descargar)="descargarArchivo($event)" (editarContenido)="abrirActualizarContenido($event)"
+                (editarMetadata)="abrirRenombrarArchivo($event)" (compartir)="abrirCompartirArchivo($event)">
+            </app-archivo-card>
+        </div>
+        }
+    </div>
+    }
+    }
+    }
+    }
+</div>

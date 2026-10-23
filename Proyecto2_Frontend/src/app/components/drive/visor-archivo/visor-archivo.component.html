@@ -1,0 +1,20 @@
+<div class="card shadow border-secondary h-100 d-flex flex-column">
+    <div class="card-header bg-dark text-white border-secondary d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">
+            <i class="bi" [class.bi-filetype-txt]="tipo === '.txt'" [class.bi-filetype-md]="tipo === '.md'"></i>
+            {{ nombre }}{{ tipo }}
+        </h6>
+        <button type="button" class="btn-close btn-close-white" (click)="cerrar.emit()"></button>
+    </div>
+    <div class="card-body bg-dark text-light overflow-auto flex-grow-1" style="max-height: 60vh;">
+        @if (cargando()) {
+        <div class="d-flex justify-content-center align-items-center h-100">
+            <div class="spinner-border text-info" role="status"></div>
+        </div>
+        } @else if (error()) {
+        <div class="text-center text-danger"><i class="bi bi-exclamation-circle me-2"></i>Error al leer archivo</div>
+        } @else {
+        <pre class="m-0 text-light" style="white-space: pre-wrap; font-family: monospace;">{{ contenido() }}</pre>
+        }
+    </div>
+</div>

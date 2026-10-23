@@ -12,16 +12,19 @@ import { Usuario } from '../../models/usuario.model';
 import { CompartirFormComponent } from '../../components/drive/compartir-form/compartir-form.component';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
+import { VisorArchivoComponent } from '../../components/drive/visor-archivo/visor-archivo.component';
+import { ActivatedRoute } from '@angular/router';
 
 @Component({
   selector: 'app-mi-unidad.component',
-  imports: [CarpetaCardComponent, ArchivoCardComponent, CarpetaFormComponent, ArchivoFormComponent, CompartirFormComponent, ReactiveFormsModule],
+  imports: [CarpetaCardComponent, ArchivoCardComponent, CarpetaFormComponent, ArchivoFormComponent, CompartirFormComponent, ReactiveFormsModule, VisorArchivoComponent],
   templateUrl: './mi-unidad.component.html'
 })
 export class MiUnidadComponent implements OnInit {
   private carpetaService = inject(CarpetaService);
   private archivoService = inject(ArchivoService);
   private usuarioService = inject(UsuarioService);
+  private route = inject(ActivatedRoute);
 
   // Estados de navegación
   currentPath = signal<string>('/');
@@ -52,6 +55,10 @@ export class MiUnidadComponent implements OnInit {
 
   filtroActivo = signal<string>('todo');
 
+  // Estado para el visor de archivos
+  mostrarVisor = signal<boolean>(false);
+  blobVisualizacion = signal<Blob | null>(null);
+
   breadcrumbs = computed(() => {
     const path = this.currentPath();
     if (path === '/') return [];
@@ -59,8 +66,14 @@ export class MiUnidadComponent implements OnInit {
   });
 
   ngOnInit() {
-    this.cargarContenido();
-    this.escucharBuscador();
+    this.route.queryParams.subscribe(params => {
+      const rutaCompartida = params['path'];
+      if (rutaCompartida) {
+        this.currentPath.set(rutaCompartida);
+      }
+      this.cargarContenido();
+      this.escucharBuscador();
+    });
   }
 
   escucharBuscador(): void {
@@ -170,6 +183,29 @@ export class MiUnidadComponent implements OnInit {
     this.errorMessage.set(null);
     this.mostrarFormCarpeta.set(true);
     this.searchControl.disable();
+  }
+
+  abrirCompartirCarpeta(carpeta: Carpeta) {
+    this.cerrarFormularios();
+    this.recursoACompartir.set({ id: carpeta._id, nombre: carpeta.nombre, tipo: 'carpeta' });
+    this.searchControl?.disable(); // Omitir searchControl si estás en compartidos.component
+
+    const colabs = carpeta.compartidoCon.map((c: any) => ({
+      usuarioId: c.usuarioId._id ? c.usuarioId._id : c.usuarioId,
+      nombre: c.usuarioId.nombre || 'Usuario',
+      email: c.usuarioId.email || 'Desconocido',
+      permiso: c.permiso
+    }));
+
+    this.colaboradoresActuales.set(colabs);
+
+    this.usuarioService.getUsuariosDisponibles('carpeta', carpeta._id).subscribe({
+      next: (usuarios) => {
+        this.usuariosDisponibles.set(usuarios);
+        this.mostrarFormCompartir.set(true);
+      },
+      error: () => this.errorMessage.set('Error al cargar usuarios disponibles.')
+    });
   }
 
   guardarCarpeta(datos: { nombre: string }) {
@@ -288,19 +324,15 @@ export class MiUnidadComponent implements OnInit {
 
     if (recurso.tipo === 'archivo') {
       this.archivoService.compartirArchivo(recurso.id, datosCompartir).subscribe({
-        next: () => {
-          this.cerrarFormularios();
-          const termino = this.searchControl.value;
-          if (termino && termino.trim() !== '') {
-            this.buscarPorCoincidencia(termino.trim());
-          } else {
-            this.cargarContenido();
-          }
-        },
+        next: () => { this.cerrarFormularios(); this.cargarContenido(); },
         error: (err) => this.errorMessage.set(err.error?.mensaje || 'Error al compartir archivo')
       });
+    } else if (recurso.tipo === 'carpeta') {
+      this.carpetaService.compartirCarpeta(recurso.id, datosCompartir).subscribe({
+        next: () => { this.cerrarFormularios(); this.cargarContenido(); },
+        error: (err) => this.errorMessage.set(err.error?.mensaje || 'Error al compartir carpeta')
+      });
     }
-    // Si luego habilitas carpetas, pones el else if (recurso.tipo === 'carpeta') {...}
   }
 
   // --- ACCIONES GENERALES ---
@@ -310,6 +342,8 @@ export class MiUnidadComponent implements OnInit {
     this.mostrarFormCompartir.set(false);
     this.errorMessage.set(null);
     this.searchControl.enable();
+    this.mostrarVisor.set(false);
+    this.blobVisualizacion.set(null);
   }
 
   actualizarPermisoColaborador(datos: { usuarioId: string, permiso: string }) {
@@ -318,10 +352,12 @@ export class MiUnidadComponent implements OnInit {
 
     if (recurso.tipo === 'archivo') {
       this.archivoService.cambiarPermisoDeCompartido(recurso.id, datos).subscribe({
-        next: () => {
-          this.cerrarFormularios();
-          this.cargarContenido(); // Refrescamos la vista principal
-        },
+        next: () => { this.cerrarFormularios(); this.cargarContenido(); },
+        error: (err) => this.errorMessage.set(err.error?.mensaje || 'Error al actualizar permiso')
+      });
+    } else if (recurso.tipo === 'carpeta') {
+      this.carpetaService.cambiarPermisoDeCompartido(recurso.id, datos).subscribe({
+        next: () => { this.cerrarFormularios(); this.cargarContenido(); },
         error: (err) => this.errorMessage.set(err.error?.mensaje || 'Error al actualizar permiso')
       });
     }
@@ -333,10 +369,12 @@ export class MiUnidadComponent implements OnInit {
 
     if (recurso.tipo === 'archivo') {
       this.archivoService.eliminarCompartido(recurso.id, usuarioId).subscribe({
-        next: () => {
-          this.cerrarFormularios();
-          this.cargarContenido();
-        },
+        next: () => { this.cerrarFormularios(); this.cargarContenido(); },
+        error: (err) => this.errorMessage.set(err.error?.mensaje || 'Error al revocar acceso')
+      });
+    } else if (recurso.tipo === 'carpeta') {
+      this.carpetaService.eliminarCompartido(recurso.id, usuarioId).subscribe({
+        next: () => { this.cerrarFormularios(); this.cargarContenido(); },
         error: (err) => this.errorMessage.set(err.error?.mensaje || 'Error al revocar acceso')
       });
     }
@@ -397,6 +435,24 @@ export class MiUnidadComponent implements OnInit {
     this.modoFormArchivo.set('renombrar');
     this.mostrarFormArchivo.set(true);
     this.searchControl.disable();
+  }
+
+  abrirVisorArchivo(archivo: Archivo) {
+    this.cerrarFormularios();
+    this.archivoSeleccionado.set(archivo);
+    this.cargando.set(true);
+
+    this.archivoService.descargarArchivo(archivo._id).subscribe({
+      next: (blob) => {
+        this.blobVisualizacion.set(blob);
+        this.mostrarVisor.set(true);
+        this.cargando.set(false);
+      },
+      error: (err) => {
+        this.errorMessage.set('Error al previsualizar.');
+        this.cargando.set(false);
+      }
+    });
   }
 
 }

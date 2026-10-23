@@ -1,4 +1,4 @@
-import { Component, EventEmitter, inject, Input, OnInit, Output } from '@angular/core';
+import { Component, EventEmitter, inject, Input, OnInit, Output, signal } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Archivo } from '../../../models/archivo.models';
 
@@ -23,6 +23,8 @@ export class ArchivoFormComponent implements OnInit {
   archivoForm!: FormGroup;
   archivoSeleccionado: File | null = null;
 
+  contenidoPreview = signal<string | null>(null);
+
   ngOnInit(): void {
     const requiereNombre = this.modo === 'crear' || this.modo === 'renombrar';
 
@@ -35,10 +37,21 @@ export class ArchivoFormComponent implements OnInit {
     const file = event.target.files[0];
     if (file) {
       this.archivoSeleccionado = file;
+
       if (this.modo === 'crear' && !this.archivoForm.get('nombre')?.value) {
         const nombreSinExt = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
         this.archivoForm.get('nombre')?.setValue(nombreSinExt);
       }
+
+      // Previsualización local con Signal
+      file.text().then((texto: string) => {
+        this.contenidoPreview.set(texto);
+      }).catch(() => {
+        this.contenidoPreview.set('Error al generar la previsualización.');
+      });
+
+    } else {
+      this.contenidoPreview.set(null);
     }
   }
 

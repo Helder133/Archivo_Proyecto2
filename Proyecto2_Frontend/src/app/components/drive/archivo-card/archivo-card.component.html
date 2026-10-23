@@ -24,6 +24,10 @@
 
         <!-- Acciones directas -->
         <div class="d-flex gap-1">
+            <button class="btn btn-sm btn-link text-light" (click)="onVisualizar()" title="Previsualizar">
+                <i class="bi bi-eye"></i>
+            </button>
+
             <button class="btn btn-sm btn-link text-success" (click)="onDescargar()" title="Descargar">
                 <i class="bi bi-cloud-arrow-down-fill"></i>
             </button>
@@ -40,12 +44,14 @@
             <button class="btn btn-sm btn-link text-warning" (click)="compartir.emit(archivo)" title="Compartir">
                 <i class="bi bi-person-plus-fill"></i>
             </button>
+            }
+            @if(!esCompartidoConmigo) {
             <button class="btn btn-sm btn-link text-danger" (click)="eliminar.emit(archivo._id)"
                 title="Mover a papelera">
                 <i class="bi bi-trash"></i>
             </button>
             }
-        </div>  
+        </div>
 
     </div>
 </div>

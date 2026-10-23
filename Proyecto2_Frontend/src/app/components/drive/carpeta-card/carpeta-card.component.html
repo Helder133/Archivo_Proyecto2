@@ -28,6 +28,12 @@
                 title="Renombrar">
                 <i class="bi bi-pencil"></i>
             </button>
+            <button class="btn btn-sm btn-link text-warning" (click)="$event.stopPropagation(); compartir.emit(carpeta)"
+                title="Compartir">
+                <i class="bi bi-person-plus-fill"></i>
+            </button>
+            }
+            @if(!esCompartidoConmigo) {
             <button class="btn btn-sm btn-link text-danger"
                 (click)="$event.stopPropagation(); eliminar.emit(carpeta._id)" title="Mover a papelera">
                 <i class="bi bi-trash"></i>

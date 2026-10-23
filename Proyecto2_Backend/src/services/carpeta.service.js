@@ -56,7 +56,7 @@ class CarpetaService {
                         if (!dueñoYaExiste) {
                             permisosHeredados.push({
                                 usuarioId: carpetaPadre.usuarioId,
-                                permiso: 'edicion' // Puedes usar tu enum permisosEnum.ESCRITURA si lo importas
+                                permiso: 'editar' // Puedes usar tu enum permisosEnum.ESCRITURA si lo importas
                             });
                         }
                     }
@@ -134,7 +134,7 @@ class CarpetaService {
 
     async findPapeleria(usuarioId) {
         await bitacoraService.registrarAccion(usuarioId, bitacoraEnum.CONSULTAR_REGISTROS, moduloAfectado.CARPETA, 'Consulta de la papelería');
-        return await carpetaRepository.findPapeleria();
+        return await carpetaRepository.findPapeleria(usuarioId);
     }
 
     async getCarpetasByNombre(coincidencia, usuarioId) {
@@ -351,7 +351,7 @@ class CarpetaService {
         return await this.compartirCarpeta(id, arregloACompartir, usuarioId);
     }
 
-    async eliminarCompartido(id, usuarioIdCompartido, usuarioId) {
+    async eliminarCompartido(id, usuarioIdCompartido, usuarioIdEjecutor) {
         if (!mongoose.Types.ObjectId.isValid(id) || !mongoose.Types.ObjectId.isValid(usuarioIdCompartido)) {
             throw new Error('ID de carpeta o usuario inválido.');
         }
@@ -360,7 +360,7 @@ class CarpetaService {
         if (!carpetaExistente) throw new Error('Carpeta no encontrada.');
 
         // Validacion de permisos, si el usuario no es el dueño original, debe tener permisos de edición
-        permisosService.verificarPermiso(carpetaExistente, usuarioId, permisosEnum.EDITAR);
+        permisosService.verificarPermiso(carpetaExistente, usuarioIdEjecutor, permisosEnum.EDITAR);
 
         const rutaPadre = `${carpetaExistente.path}${carpetaExistente.nombre}/`;
         const archivoService = require('./archivo.service');
@@ -376,7 +376,7 @@ class CarpetaService {
                 await archivoService.removerPermisoDescendientes(rutaPadre, usuarioIdCompartido, session);
 
                 // 3. Registramos la acción en la bitácora dentro de la misma transacción
-                await bitacoraService.registrarAccion(usuarioId, bitacoraEnum.CAMBIO_PERMISO, moduloAfectado.CARPETA, carpetaExistente.nombre, id, session);
+                await bitacoraService.registrarAccion(usuarioIdEjecutor, bitacoraEnum.CAMBIO_PERMISO, moduloAfectado.CARPETA, carpetaExistente.nombre, id, session);
             });
             return true;
         } catch (error) {

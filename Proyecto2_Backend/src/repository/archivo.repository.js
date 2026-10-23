@@ -37,7 +37,8 @@ class ArchivoRepository {
                 { "compartidoCon.usuarioId": usuarioIdEjecutor }
             ]
         })
-        .populate('compartidoCon.usuarioId', 'nombre email').lean();
+            .populate('compartidoCon.usuarioId', 'nombre email')
+            .lean();
     }
 
     async findById(id) {
@@ -56,7 +57,8 @@ class ArchivoRepository {
                 { "compartidoCon.usuarioId": usuarioIdEjecutor }
             ]
         })
-        .populate('compartidoCon.usuarioId', 'nombre email').lean();
+            .populate('compartidoCon.usuarioId', 'nombre email')
+            .lean();
     }
 
     async findByExtension(extension, usuarioIdEjecutor) {
@@ -68,17 +70,14 @@ class ArchivoRepository {
                 { "compartidoCon.usuarioId": usuarioIdEjecutor }
             ]
         })
-        .populate('compartidoCon.usuarioId', 'nombre email')
-        .lean();
+            .populate('compartidoCon.usuarioId', 'nombre email')
+            .lean();
     }
 
     async findPapeleria(usuarioIdEjecutor) {
         return await ArchivoModel.find({
             estado: false,
-            $or: [
-                { usuarioId: usuarioIdEjecutor },
-                { "compartidoCon.usuarioId": usuarioIdEjecutor }
-            ]
+            usuarioId: usuarioIdEjecutor
         }).lean();
     }
 
@@ -91,15 +90,17 @@ class ArchivoRepository {
                 { "compartidoCon.usuarioId": usuarioIdEjecutor }
             ]
         })
-        .populate('compartidoCon.usuarioId', 'nombre email')
-        .lean();
+            .populate('compartidoCon.usuarioId', 'nombre email')
+            .lean();
     }
 
     async findCompartidosConUsuario(usuarioId) {
         return await ArchivoModel.find({
             "compartidoCon.usuarioId": usuarioId,
             estado: true
-        }).lean();
+        })
+            .populate('compartidoCon.usuarioId', 'nombre email')
+            .lean();
     }
 
     async validarCompartidoCon(archivoId, usuarioId) {

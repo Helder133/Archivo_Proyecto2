@@ -19,6 +19,11 @@ export class ArchivoCardComponent {
   @Output() editarContenido = new EventEmitter<Archivo>(); // Para cuando implementes el PUT de contenido
   @Output() compartir = new EventEmitter<Archivo>();
   @Output() eliminar = new EventEmitter<string>();
+  @Output() visualizar = new EventEmitter<Archivo>();
+
+  onVisualizar() {
+    this.visualizar.emit(this.archivo);
+  }
 
   get esCompartidoConmigo(): boolean {
     const miId = this.authService.currentUser()?._id;
