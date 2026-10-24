@@ -17,7 +17,7 @@ class CarpetaRepository {
     async findById(id) {
         if (!mongoose.Types.ObjectId.isValid(id)) return null;
         return await CarpetaModel.findOne({ _id: id, estado: true }).populate('compartidoCon.usuarioId', 'nombre email')
-        .lean();
+            .lean();
     }
 
     async findByIdSinEstado(id) {
@@ -34,7 +34,15 @@ class CarpetaRepository {
                 { "compartidoCon.usuarioId": usuarioIdEjecutor }
             ]
         }).populate('compartidoCon.usuarioId', 'nombre email')
-        .lean();
+            .lean();
+    }
+
+    async findPapeleraByPath(path, usuarioIdEjecutor) {
+        return await CarpetaModel.find({
+            path: path,
+            estado: false,
+            usuarioId: usuarioIdEjecutor
+        }).lean();
     }
 
     async findPapeleria(usuarioIdEjecutor) {
@@ -65,7 +73,7 @@ class CarpetaRepository {
                 { "compartidoCon.usuarioId": usuarioIdEjecutor }
             ]
         }).populate('compartidoCon.usuarioId', 'nombre email')
-        .lean();
+            .lean();
     }
 
     async findCompartidosConUsuario(usuarioId) {
@@ -73,8 +81,8 @@ class CarpetaRepository {
             "compartidoCon.usuarioId": usuarioId,
             estado: true
         })
-        .populate('compartidoCon.usuarioId', 'nombre email')
-        .lean();
+            .populate('compartidoCon.usuarioId', 'nombre email')
+            .lean();
     }
 
     async update(id, data, session = null) {
@@ -83,6 +91,24 @@ class CarpetaRepository {
         const options = session ? { session } : {}; // Inyectamos la sesión si existe
         const result = await CarpetaModel.updateOne({ _id: id }, { $set: data }, options);
         return result.modifiedCount > 0;
+    }
+
+    async actualizarPathIndividual(id, nuevoPath, session) {
+        return await CarpetaModel.updateOne({ _id: id }, { $set: { path: nuevoPath } }, { session });
+    }
+
+    async actualizarPathsDescendencia(pathAnterior, pathNueva, session) {
+        return await CarpetaModel.updateMany(
+            { path: { $regex: `^${pathAnterior}` } },
+            [{
+                $set: {
+                    path: {
+                        $replaceOne: { input: "$path", find: pathAnterior, replacement: pathNueva }
+                    }
+                }
+            }],
+            { session, updatePipeline: true }
+        );
     }
 
     async actualizarPaths(pathAnterior, pathNueva, session) {
@@ -194,6 +220,18 @@ class CarpetaRepository {
             { $pull: { compartidoCon: { usuarioId: usuarioId } } },
             { session }
         );
+    }
+
+    async findByRutaExactaSegura(rutaCompleta, idDueñoOriginal, idEjecutor) {
+        if (rutaCompleta === '/') return null;
+        return await CarpetaModel.findOne({
+            $expr: { $eq: [{ $concat: ["$path", "$nombre", "/"] }, rutaCompleta] },
+            estado: true,
+            $or: [
+                { usuarioId: idDueñoOriginal },
+                { usuarioId: idEjecutor }
+            ]
+        }).lean();
     }
 
 }

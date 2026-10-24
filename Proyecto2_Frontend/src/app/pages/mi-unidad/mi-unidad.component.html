@@ -113,8 +113,16 @@
             </app-visor-archivo>
         </div>
     </div>
-    }
-    @else {
+    } @else if (mostrarFormMover()) {
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <app-mover-form [nombreRecurso]="recursoAMover()?.nombre || ''"
+                [pathActual]="recursoAMover()?.pathActual || ''" [backendError]="errorMessage()"
+                (formSubmit)="guardarMovimiento($event)" (formCancel)="cerrarFormularios()">
+            </app-mover-form>
+        </div>
+    </div>
+    } @else {
     <!-- VISTA PRINCIPAL: SPINNER O CONTENIDO -->
     @if (cargando()) {
     <div class="text-center py-5">
@@ -129,7 +137,7 @@
         <div class="col">
             <app-carpeta-card [carpeta]="folder" (entrar)="entrarACarpeta($event)"
                 (editar)="abrirRenombrarCarpeta($event)" (compartir)="abrirCompartirCarpeta($event)"
-                (eliminar)="moverCarpetaAPapelera($event)">
+                (mover)="abrirMoverCarpeta($event)" (eliminar)="moverCarpetaAPapelera($event)">
             </app-carpeta-card>
         </div>
         }
@@ -147,7 +155,7 @@
             <app-archivo-card [archivo]="file" (descargar)="descargarArchivo($event)"
                 (visualizar)="abrirVisorArchivo($event)" (editarContenido)="abrirActualizarContenido($event)"
                 (editarMetadata)="abrirRenombrarArchivo($event)" (compartir)="abrirCompartirArchivo($event)"
-                (eliminar)="moverArchivoAPapelera($event)">
+                (mover)="abrirMoverArchivo($event)" (eliminar)="moverArchivoAPapelera($event)">
             </app-archivo-card>
         </div>
         }

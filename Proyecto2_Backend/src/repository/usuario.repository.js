@@ -99,8 +99,8 @@ class UsuarioRepository {
         return await UsuarioModel.findById(id).select('-password').lean();
     }
 
-    async findAll() {
-        return await UsuarioModel.find().select('-password').lean();
+    async findAll(usuarioId) {
+        return await UsuarioModel.find({ _id: { $ne: usuarioId } }).select('-password').lean();
     }
 
     async findUsuariosExcluyendoIds(idsExcluidos) {

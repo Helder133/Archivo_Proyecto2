@@ -12,6 +12,13 @@ class ArchivoService {
             throw new Error('Faltan datos requeridos o el archivo.');
         }
 
+        // validamos que tenga espacio suficiente para subir el archivo
+        const alamacenamientoService = require('./almacenamiento.service');
+        const espacioDisponible = await alamacenamientoService.obtenerEstadoAlmacenamiento(archivoData.usuarioId);
+        if (espacioDisponible.usado + archivoData.peso > espacioDisponible.limite) {
+            throw new Error('Almacenamiento insuficiente. Libera espacio para subir este archivo.');
+        }
+
         const usuarioService = require('./usuario.service');
         const usuario = await usuarioService.getUsuarioById(archivoData.usuarioId, archivoData.usuarioId);
         if (!usuario) throw new Error('Usuario no encontrado.');
@@ -65,6 +72,7 @@ class ArchivoService {
             tipo: archivoData.tipo,
             path: archivoData.path,
             usuarioId: archivoData.usuarioId,
+            peso: archivoData.peso,
             archivoGridFsId: gridFsId,
             estado: true,
             compartidoCon: permisosHeredados
@@ -141,6 +149,11 @@ class ArchivoService {
         return await archivoRepository.findByPath(path, usuarioIdEjecutor);
     }
 
+    async getArchivosByPathPapelera(path, usuarioIdEjecutor) {
+        await bitacoraService.registrarAccion(usuarioIdEjecutor, bitacoraEnum.CONSULTAR_REGISTROS, moduloAfectado.ARCHIVO, `Archivos en papelera en path: ${path}`, null, null);
+        return await archivoRepository.findPapeleraByPath(path, usuarioIdEjecutor);
+    }
+
     // --- MÉTODO PARA DESCARGAR/LEER ---
     async descargarArchivo(id, usuarioId) {
         const archivo = await archivoRepository.findById(id);
@@ -159,7 +172,7 @@ class ArchivoService {
         };
     }
 
-    async actualizarContenido(id, fileBuffer, usuarioId) {
+    async actualizarContenido(id, fileBuffer, nuevoPeso, usuarioId) {
         if (!fileBuffer) {
             throw new Error('No se proporcionó el nuevo contenido del archivo.');
         }
@@ -169,38 +182,41 @@ class ArchivoService {
             throw new Error('Archivo no encontrado.');
         }
 
+        const almacenamientoService = require('./almacenamiento.service');
+        const estado = await almacenamientoService.obtenerEstadoAlmacenamiento(archivoExistente.usuarioId);
+
+        const pesoViejo = archivoExistente.peso || 0;
+        const diferenciaPeso = nuevoPeso - pesoViejo;
+
+        if (estado.usado + diferenciaPeso > estado.limite) {
+            throw new Error('Almacenamiento insuficiente. Libera espacio para actualizar este archivo.');
+        }
+
+        // Validacion de permisos
+        permisosService.verificarPermiso(archivoExistente, usuarioId, permisosEnum.EDITAR);
+
         const idGridFsViejo = archivoExistente.archivoGridFsId;
 
-        // 1. Subimos el nuevo contenido a GridFS (Fuera de la transacción porque los streams no la soportan)
+        // 1. Subimos el nuevo contenido a GridFS
         const idGridFsNuevo = await archivoRepository.subirAGridFs(archivoExistente.nombre, fileBuffer);
-
-        // Validacion de permisos, si el usuario no es el dueño original, debe tener permisos de edición
-        permisosService.verificarPermiso(archivoExistente, usuarioId, permisosEnum.EDITAR);
 
         const session = await mongoose.startSession();
 
         try {
             await session.withTransaction(async () => {
-                // 2. Actualizamos la metadata en Mongoose
                 const dataAActualizar = {
                     archivoGridFsId: idGridFsNuevo,
+                    peso: nuevoPeso,
                     fechaModificacion: new Date()
                 };
 
-                // Asegúrate de que tu método update reciba y pase la sesión
                 await archivoRepository.update(id, dataAActualizar, session);
-
-                // 3. Eliminamos el archivo viejo usando la sesión
                 await archivoRepository.eliminarBinariosGridFS([idGridFsViejo], session);
-
-                // 4. Registramos la acción en la bitácora
                 await bitacoraService.registrarAccion(usuarioId, bitacoraEnum.MODIFICACION, moduloAfectado.ARCHIVO, archivoExistente.nombre, id, session);
             });
 
             return true;
         } catch (error) {
-            // 4. ROLLBACK MANUAL: Si la transacción falló, Mongoose y el archivo viejo están a salvo.
-            // Pero el archivo nuevo se quedó flotando como basura. Lo eliminamos.
             console.error("Transacción fallida. Ejecutando limpieza del archivo huérfano...", error);
             await archivoRepository.eliminarBinariosGridFS([idGridFsNuevo]);
             throw error;
@@ -389,6 +405,57 @@ class ArchivoService {
     }
 
     // ----------------------------- Metodos que son llamadaos si ocurre un cambio desde una carpeta ---------------------------------
+
+    async moverArchivo(id, nuevoPathDestino, usuarioId) {
+        const archivo = await archivoRepository.findByIdSinEstado(id);
+        if (!archivo) throw new Error('Archivo no encontrado.');
+
+        permisosService.verificarPermiso(archivo, usuarioId, permisosEnum.EDITAR);
+        const carpetaRepository = require('../repository/carpeta.repository');
+
+        // --- VALIDACIÓN DE DESTINO GENERAL ---
+        let carpetaDestino = null;
+        if (nuevoPathDestino !== '/') {
+            carpetaDestino = await carpetaRepository.findByRutaExactaSegura(nuevoPathDestino, archivo.usuarioId, usuarioId);
+            if (!carpetaDestino) throw new Error('La ruta de destino no existe.');
+
+            // Validamos que quien ejecuta la acción pueda escribir en esa carpeta
+            permisosService.verificarPermiso(carpetaDestino, usuarioId, permisosEnum.EDITAR);
+        }
+        // -------------------------------------
+
+        // --- BLINDAJE DE SEGURIDAD PARA COMPARTIDOS ---
+        if (archivo.usuarioId.toString() !== usuarioId.toString()) {
+            if (nuevoPathDestino === '/' || archivo.path === '/') {
+                throw new Error('No puedes mover elementos desde o hacia la raíz del propietario original.');
+            }
+
+            const carpetaOrigen = await carpetaRepository.findByRutaExactaSegura(archivo.path, archivo.usuarioId, usuarioId);
+            if (!carpetaOrigen) throw new Error('Carpeta de origen inválida.');
+            permisosService.verificarPermiso(carpetaOrigen, usuarioId, permisosEnum.EDITAR);
+
+            // Evitar secuestro usando la carpeta que ya buscamos arriba
+            if (carpetaDestino.usuarioId.toString() !== archivo.usuarioId.toString()) {
+                const originalTieneAcceso = carpetaDestino.compartidoCon.some(
+                    c => c.usuarioId.toString() === archivo.usuarioId.toString()
+                );
+                if (!originalTieneAcceso) {
+                    throw new Error('No puedes mover el archivo a una carpeta privada. El propietario original debe tener acceso al destino.');
+                }
+            }
+        }
+        // ----------------------------------------------
+
+        await archivoRepository.actualizarPathIndividual(id, nuevoPathDestino);
+        await bitacoraService.registrarAccion(usuarioId, bitacoraEnum.MODIFICACION, moduloAfectado.ARCHIVO, `Se movió a ${nuevoPathDestino}`, id, null);
+
+        return true;
+    }
+
+    async actualizarPathsDescendencia(pathAnterior, pathNueva, session) {
+        return await archivoRepository.actualizarPathsDescendencia(pathAnterior, pathNueva, session);
+    }
+
     async moverArchivos(pathAnterior, pathNueva, session) {
         return await archivoRepository.actualizarPaths(pathAnterior, pathNueva, session);
     }

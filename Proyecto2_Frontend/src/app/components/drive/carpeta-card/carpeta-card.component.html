@@ -23,6 +23,7 @@
         </div>
 
         <div class="d-flex gap-1">
+            @if(!enPapelera) {
             @if (puedeEditar) {
             <button class="btn btn-sm btn-link text-info" (click)="$event.stopPropagation(); editar.emit(carpeta)"
                 title="Renombrar">
@@ -32,12 +33,29 @@
                 title="Compartir">
                 <i class="bi bi-person-plus-fill"></i>
             </button>
+            <button class="btn btn-sm btn-link text-primary"
+                (click)="$event.stopPropagation(); mover.emit(carpeta)" title="Mover">
+                <i class="bi bi-arrows-move"></i>
+            </button>
             }
             @if(!esCompartidoConmigo) {
             <button class="btn btn-sm btn-link text-danger"
                 (click)="$event.stopPropagation(); eliminar.emit(carpeta._id)" title="Mover a papelera">
                 <i class="bi bi-trash"></i>
             </button>
+            }
+            } @else {
+            @if (mostrarAccionesPapelera) {
+            <button class="btn btn-sm btn-link text-success" (click)="$event.stopPropagation(); restaurar.emit(carpeta)"
+                title="Restaurar">
+                <i class="bi bi-arrow-counterclockwise"></i>
+            </button>
+            <button class="btn btn-sm btn-link text-danger"
+                (click)="$event.stopPropagation(); eliminarDefinitivo.emit((carpeta)._id)"
+                title="Eliminar Definitivamente">
+                <i class="bi bi-x-circle-fill"></i>
+            </button>
+            }
             }
         </div>
     </div>

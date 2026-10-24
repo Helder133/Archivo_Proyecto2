@@ -16,9 +16,13 @@ class ReporteRepository {
     }
 
     async archivosPorRangoFechas(inicio, fin) {
+        const fechaInicio = new Date(inicio);
+        const fechaFin = new Date(fin);
+        fechaFin.setUTCHours(23, 59, 59, 999);
+
         return await ArchivoModel.find({
             estado: true,
-            fechaCreacion: { $gte: new Date(inicio), $lte: new Date(fin) }
+            fechaCreacion: { $gte: fechaInicio, $lte: fechaFin }
         }).lean();
     }
 
@@ -90,9 +94,13 @@ class ReporteRepository {
 
     // --- REPORTES DE ACTIVIDAD ---
     async historialUsuarioFechas(usuarioId, inicio, fin) {
+        const fechaInicio = new Date(inicio);
+        const fechaFin = new Date(fin);
+        fechaFin.setUTCHours(23, 59, 59, 999);
+
         return await BitacoraModel.find({
             usuarioId: new mongoose.Types.ObjectId(usuarioId),
-            fecha: { $gte: new Date(inicio), $lte: new Date(fin) }
+            fecha: { $gte: fechaInicio, $lte: fechaFin }
         }).sort({ fecha: -1 }).lean();
     }
 

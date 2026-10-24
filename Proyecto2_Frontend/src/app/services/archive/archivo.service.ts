@@ -76,6 +76,10 @@ export class ArchivoService {
     return this.http.delete(`${this.apiUrl}/${id}`);
   }
 
+  moverArchivo(id: string, nuevoPathDestino: string): Observable<any> {
+    return this.http.put(`${this.apiUrl}/mover/${id}`, { nuevoPathDestino });
+  }
+
   // --- GESTIÓN DE PERMISOS (COMPARTIDO) ---
 
   compartirArchivo(id: string, compartido: any[]): Observable<any> {

@@ -26,7 +26,9 @@ export const routes: Routes = [
         children: [
             { path: '', redirectTo: 'mi-unidad', pathMatch: 'full' },
             { path: 'mi-unidad', loadComponent: () => import('./pages/mi-unidad/mi-unidad.component').then(m => m.MiUnidadComponent) },
-            { path: 'compartido', loadComponent: () => import('./pages/compartido/compartido.component').then(m => m.CompartidoComponent) }
+            { path: 'compartido', loadComponent: () => import('./pages/compartido/compartido.component').then(m => m.CompartidoComponent) },
+            { path: 'papelera', loadComponent: () => import('./pages/papelera/papelera.component').then(m => m.PapeleraComponent) }
+
         ]
     },
     { path: '', redirectTo: 'login', pathMatch: 'full' },

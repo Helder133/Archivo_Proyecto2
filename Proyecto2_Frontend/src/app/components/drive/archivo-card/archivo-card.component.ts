@@ -12,14 +12,18 @@ export class ArchivoCardComponent {
   private authService = inject(AuthService);
 
   @Input({ required: true }) archivo!: Archivo;
+  @Input() enPapelera: boolean = false; // Indica si se renderiza en la vista papelera
+  @Input() mostrarAccionesPapelera: boolean = true; // Controla si se muestran los botones según la raíz
 
-  // Eventos hacia el padre
+  @Output() restaurar = new EventEmitter<any>();
+  @Output() eliminarDefinitivo = new EventEmitter<string>();
   @Output() descargar = new EventEmitter<string>();
   @Output() editarMetadata = new EventEmitter<Archivo>();
   @Output() editarContenido = new EventEmitter<Archivo>(); // Para cuando implementes el PUT de contenido
   @Output() compartir = new EventEmitter<Archivo>();
   @Output() eliminar = new EventEmitter<string>();
   @Output() visualizar = new EventEmitter<Archivo>();
+  @Output() mover = new EventEmitter<any>();
 
   onVisualizar() {
     this.visualizar.emit(this.archivo);

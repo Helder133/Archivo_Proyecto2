@@ -3,7 +3,7 @@ import { VisorArchivoComponent } from '../../components/drive/visor-archivo/viso
 import { ArchivoCardComponent } from '../../components/drive/archivo-card/archivo-card.component';
 import { CarpetaCardComponent } from '../../components/drive/carpeta-card/carpeta-card.component';
 import { CompartidoService } from '../../services/compartido/compartido.service';
-import { ArchivoService } from '../../services/archivo/archivo.service';
+import { ArchivoService } from '../../services/archive/archivo.service';
 import { Router } from '@angular/router';
 import { Carpeta } from '../../models/carpeta.models';
 import { Archivo } from '../../models/archivo.models';

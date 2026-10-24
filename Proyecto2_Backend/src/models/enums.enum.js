@@ -22,7 +22,8 @@ const moduloAfectado = Object.freeze({
     USUARIO: 'usuario',
     BITACORA: 'bitacora',
     COMPARTIDO: 'compartido',
-    REPORTE: 'reporte'
+    REPORTE: 'reporte',
+    PAPELERA: 'papelera'
 });
 
 const permisosEnum = Object.freeze({

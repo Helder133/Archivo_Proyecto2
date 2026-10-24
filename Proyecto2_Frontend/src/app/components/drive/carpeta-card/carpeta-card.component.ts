@@ -12,11 +12,16 @@ export class CarpetaCardComponent {
   private authService = inject(AuthService);
 
   @Input({ required: true }) carpeta!: Carpeta;
-
+  @Input() enPapelera: boolean = false; // Indica si se renderiza en la vista papelera
+  @Input() mostrarAccionesPapelera: boolean = true; // Controla si se muestran los botones según la raíz
+  
+  @Output() restaurar = new EventEmitter<any>();
+  @Output() eliminarDefinitivo = new EventEmitter<string>();
   @Output() entrar = new EventEmitter<Carpeta>();
   @Output() editar = new EventEmitter<Carpeta>();
   @Output() eliminar = new EventEmitter<string>();
   @Output() compartir = new EventEmitter<Carpeta>();
+  @Output() mover = new EventEmitter<any>();
 
   get esCompartidoConmigo(): boolean {
     const miId = this.authService.currentUser()?._id;

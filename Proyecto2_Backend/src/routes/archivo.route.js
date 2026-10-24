@@ -20,6 +20,7 @@ router.get('/archivo/descargar/:id', verificarToken, controllerArchivo.descargar
 router.get('/archivo/:id', verificarToken, controllerArchivo.getArchivoById);
 
 router.put('/archivo/cambiar-permiso', verificarToken, controllerArchivo.cambiarPermisoDeCompartido);
+router.put('/archivo/mover/:id', verificarToken, controllerArchivo.moverArchivo);
 router.put('/archivo/contenido/:id', verificarToken, upload.single('archivoFisico'), controllerArchivo.actualizarContenido);
 router.put('/archivo/renombrar/:id', verificarToken, controllerArchivo.renombrarArchivo);
 

@@ -1,0 +1,73 @@
+<div class="container-fluid mt-3">
+    <!-- Header -->
+    <div class="d-flex align-items-center mb-4 gap-2">
+        <i class="bi bi-trash3-fill fs-3 text-danger me-2"></i>
+        <h3 class="mb-0 text-light me-3">Papelera</h3>
+
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0 bg-dark px-3 py-2 rounded border border-secondary">
+                <li class="breadcrumb-item">
+                    <a href="javascript:void(0)" class="text-decoration-none text-danger" (click)="navegarAMiga(-1)">
+                        <i class="bi bi-trash"></i> Raíz
+                    </a>
+                </li>
+                @for (miga of breadcrumbs(); track $index) {
+                <li class="breadcrumb-item" [class.active]="$last">
+                    @if ($last) {
+                    <span class="text-light">{{ miga }}</span>
+                    } @else {
+                    <a href="javascript:void(0)" class="text-decoration-none" (click)="navegarAMiga($index)">{{ miga
+                        }}</a>
+                    }
+                </li>
+                }
+            </ol>
+        </nav>
+    </div>
+
+    @if (errorMessage()) {
+    <div class="alert alert-danger"><i class="bi bi-exclamation-triangle me-2"></i>{{ errorMessage() }}</div>
+    }
+
+    @if (cargando()) {
+    <div class="text-center py-5">
+        <div class="spinner-border text-danger" role="status"></div>
+    </div>
+    } @else {
+
+    @if (carpetas().length === 0 && archivos().length === 0) {
+    <div class="text-center py-5 mt-5">
+        <i class="bi bi-trash text-secondary opacity-50" style="font-size: 5rem;"></i>
+        <h5 class="text-secondary mt-3">La papelera está vacía</h5>
+    </div>
+    } @else {
+
+    @if (carpetas().length > 0) {
+    <h6 class="text-secondary mb-3 border-bottom border-secondary pb-2">Carpetas</h6>
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-xl-4 g-3 mb-4">
+        @for (folder of carpetas(); track folder._id) {
+        <div class="col">
+            <app-carpeta-card [carpeta]="folder" [enPapelera]="true" [mostrarAccionesPapelera]="esRaiz()"
+                (entrar)="entrarACarpeta($event)" (restaurar)="restaurarCarpeta($event)"
+                (eliminarDefinitivo)="eliminarCarpetaFisica($event)">
+            </app-carpeta-card>
+        </div>
+        }
+    </div>
+    }
+
+    @if (archivos().length > 0) {
+    <h6 class="text-secondary mb-3 border-bottom border-secondary pb-2">Archivos</h6>
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-xl-4 g-3">
+        @for (file of archivos(); track file._id) {
+        <div class="col">
+            <app-archivo-card [archivo]="file" [enPapelera]="true" [mostrarAccionesPapelera]="esRaiz()"
+                (restaurar)="restaurarArchivo($event)" (eliminarDefinitivo)="eliminarArchivoFisico($event)">
+            </app-archivo-card>
+        </div>
+        }
+    </div>
+    }
+    }
+    }
+</div>

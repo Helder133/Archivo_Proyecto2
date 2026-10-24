@@ -171,7 +171,7 @@ class UsuarioService {
 
     async getAllUsuarios(usuarioId) {
         await bitacoraService.registrarAccion(usuarioId, bitacoraEnum.CONSULTAR_REGISTROS, moduloAfectado.USUARIO, 'Consulta de todos los usuarios');
-        return await usuarioRepository.findAll();
+        return await usuarioRepository.findAll(usuarioId);
     }
 
     async getUsuariosDisponibles(tipo, recursoId) {

@@ -1,0 +1,21 @@
+<div class="card bg-dark text-light border-secondary shadow">
+    <div class="card-header border-secondary d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-arrows-move me-2"></i>Mover: {{ nombreRecurso }}</h5>
+        <button class="btn-close btn-close-white" (click)="formCancel.emit()"></button>
+    </div>
+    <div class="card-body">
+        @if (backendError) {
+        <div class="alert alert-danger py-2">{{ backendError }}</div>
+        }
+        <div class="mb-3">
+            <label class="form-label">Ruta de destino</label>
+            <input type="text" class="form-control bg-dark text-light border-secondary" [(ngModel)]="nuevoPath"
+                placeholder="/ruta/destino/">
+            <small class="text-secondary">Ej: / (para la raíz) o /proyectos/fase1/</small>
+        </div>
+        <div class="d-flex justify-content-end gap-2 mt-4">
+            <button class="btn btn-outline-secondary" (click)="formCancel.emit()">Cancelar</button>
+            <button class="btn btn-primary" (click)="onSubmit()" [disabled]="!nuevoPath">Mover</button>
+        </div>
+    </div>
+</div>

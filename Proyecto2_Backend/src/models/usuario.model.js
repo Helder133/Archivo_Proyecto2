@@ -26,9 +26,14 @@ const usuarioSchema = new mongoose.Schema(
         estado: {
             type: Boolean,
             default: true
+        },
+        limiteAlmacenamiento: {
+            type: Number,
+            default: 7168 //5368709120 5GB
         }
 
-    }, 
+
+    },
     {
         collection: 'usuario',
         versionKey: false,

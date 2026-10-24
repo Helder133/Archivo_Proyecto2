@@ -94,6 +94,14 @@ class ArchivoRepository {
             .lean();
     }
 
+    async findPapeleraByPath(path, usuarioIdEjecutor) {
+        return await ArchivoModel.find({
+            path: path,
+            estado: false,
+            usuarioId: usuarioIdEjecutor
+        }).lean();
+    }
+
     async findCompartidosConUsuario(usuarioId) {
         return await ArchivoModel.find({
             "compartidoCon.usuarioId": usuarioId,
@@ -190,6 +198,25 @@ class ArchivoRepository {
     }
 
     // ----------------------------- Metodos que son llamadaos si ocurre un cambio desde una carpeta ---------------------------------
+
+    async actualizarPathIndividual(id, nuevoPath) {
+        return await ArchivoModel.updateOne({ _id: id }, { $set: { path: nuevoPath } });
+    }
+
+    async actualizarPathsDescendencia(pathAnterior, pathNueva, session) {
+        return await ArchivoModel.updateMany(
+            { path: { $regex: `^${pathAnterior}` } },
+            [{
+                $set: {
+                    path: {
+                        $replaceOne: { input: "$path", find: pathAnterior, replacement: pathNueva }
+                    }
+                }
+            }],
+            { session, updatePipeline: true }
+        );
+    }
+
     async cambiarEstadoDescendientes(pathPadre, nuevoEstado, session) {
         return await ArchivoModel.updateMany(
             { path: { $regex: `^${pathPadre}` } },

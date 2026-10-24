@@ -61,6 +61,31 @@
                 Papelera
             </a>
         </li>
+        @if (almacenamiento()) {
+        <div class="mt-4 px-3 text-light">
+            <div class="d-flex justify-content-between mb-1" style="font-size: 0.85rem;">
+                <span><i class="bi bi-cloud-fill me-2"></i>Almacenamiento</span>
+                <span>{{ formatBytes(almacenamiento()!.usado) }} / {{ formatBytes(almacenamiento()!.limite) }}</span>
+            </div>
+
+            <div class="progress bg-dark border border-secondary" style="height: 8px;">
+                <div class="progress-bar"
+                    [class.bg-danger]="almacenamiento()!.lleno || +almacenamiento()!.porcentaje > 90"
+                    [class.bg-warning]="+almacenamiento()!.porcentaje > 75 && +almacenamiento()!.porcentaje <= 90"
+                    [class.bg-primary]="+almacenamiento()!.porcentaje <= 75" role="progressbar"
+                    [style.width]="almacenamiento()!.porcentaje + '%'"
+                    [attr.aria-valuenow]="almacenamiento()!.porcentaje" aria-valuemin="0" aria-valuemax="100">
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between text-secondary mt-1" style="font-size: 0.75rem;">
+                <span>{{ almacenamiento()!.porcentaje }}% utilizado</span>
+                @if (almacenamiento()!.lleno) {
+                <span class="text-danger fw-bold">¡Espacio lleno!</span>
+                }
+            </div>
+        </div>
+        }
         }
     </ul>
 

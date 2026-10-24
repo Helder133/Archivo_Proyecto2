@@ -70,14 +70,15 @@ class CarpetaController {
         }
     }
 
-    async moverCarpeta(req, res) {
-        const usuarioId = req.usuario.id;
+    async moverCarpeta(req, res) {   
         try {
-            const { pathAnterior, pathNueva } = req.body;
-            await carpetaService.moverCarpeta(pathAnterior, pathNueva, usuarioId);
+            const usuarioId = req.usuario.id;
+            const { id } = req.params;
+            const { nuevoPathDestino } = req.body;
+            await carpetaService.moverCarpeta(id, nuevoPathDestino, usuarioId);
             res.json({ message: 'Carpeta movida correctamente' });
         } catch (error) {
-            res.status(400).json({ error: error.message });
+            res.status(400).json({ mensaje: error.message });
         }
     }
 

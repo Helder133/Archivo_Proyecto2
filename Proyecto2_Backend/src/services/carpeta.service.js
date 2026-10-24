@@ -132,6 +132,11 @@ class CarpetaService {
         return await carpetaRepository.findByPath(path, usuarioId);
     }
 
+    async findCarpetasByPathPapelera(path, usuarioId) {
+        await bitacoraService.registrarAccion(usuarioId, bitacoraEnum.CONSULTAR_REGISTROS, moduloAfectado.CARPETA, `Consulta de carpetas en papelera en path: ${path}`);
+        return await carpetaRepository.findPapeleraByPath(path, usuarioId);
+    }
+
     async findPapeleria(usuarioId) {
         await bitacoraService.registrarAccion(usuarioId, bitacoraEnum.CONSULTAR_REGISTROS, moduloAfectado.CARPETA, 'Consulta de la papelería');
         return await carpetaRepository.findPapeleria(usuarioId);
@@ -198,14 +203,61 @@ class CarpetaService {
         }
     }
 
-    async moverCarpeta(pathAnterior, pathNueva) {
+    async moverCarpeta(id, nuevoPathDestino, usuarioId) {
+        const carpeta = await carpetaRepository.findByIdSinEstado(id);
+        if (!carpeta) throw new Error('Carpeta no encontrada.');
+
+        permisosService.verificarPermiso(carpeta, usuarioId, permisosEnum.EDITAR);
+
+        const rutaAnterior = `${carpeta.path}${carpeta.nombre}/`;
+        if (nuevoPathDestino.startsWith(rutaAnterior)) {
+            throw new Error('No puedes mover una carpeta dentro de sí misma.');
+        }
+
+        // --- VALIDACIÓN DE DESTINO GENERAL ---
+        let carpetaDestino = null;
+        if (nuevoPathDestino !== '/') {
+            carpetaDestino = await carpetaRepository.findByRutaExactaSegura(nuevoPathDestino, carpeta.usuarioId, usuarioId);
+            if (!carpetaDestino) throw new Error('La ruta de destino no existe.');
+
+            // Validamos que quien ejecuta la acción pueda escribir en esa carpeta
+            permisosService.verificarPermiso(carpetaDestino, usuarioId, permisosEnum.EDITAR);
+        }
+        // -------------------------------------
+
+        // --- BLINDAJE DE SEGURIDAD PARA COMPARTIDOS ---
+        if (carpeta.usuarioId.toString() !== usuarioId.toString()) {
+            if (nuevoPathDestino === '/' || carpeta.path === '/') {
+                throw new Error('No puedes mover elementos desde o hacia la raíz del propietario original.');
+            }
+
+            const carpetaOrigen = await carpetaRepository.findByRutaExactaSegura(carpeta.path, carpeta.usuarioId, usuarioId);
+            if (!carpetaOrigen) throw new Error('Carpeta de origen inválida.');
+            permisosService.verificarPermiso(carpetaOrigen, usuarioId, permisosEnum.EDITAR);
+
+            // Evitar secuestro
+            if (carpetaDestino.usuarioId.toString() !== carpeta.usuarioId.toString()) {
+                const originalTieneAcceso = carpetaDestino.compartidoCon.some(
+                    c => c.usuarioId.toString() === carpeta.usuarioId.toString()
+                );
+                if (!originalTieneAcceso) {
+                    throw new Error('No puedes mover la carpeta a un espacio privado. El propietario original debe tener acceso al destino.');
+                }
+            }
+        }
+        // ----------------------------------------------
+
+        const rutaNueva = `${nuevoPathDestino}${carpeta.nombre}/`;
         const session = await mongoose.startSession();
 
         try {
             await session.withTransaction(async () => {
-                await carpetaRepository.actualizarPaths(pathAnterior, pathNueva, session);
                 const archivoService = require('./archivo.service');
-                await archivoService.moverArchivos(pathAnterior, pathNueva, session);
+                await carpetaRepository.actualizarPathIndividual(id, nuevoPathDestino, session);
+                await carpetaRepository.actualizarPathsDescendencia(rutaAnterior, rutaNueva, session);
+                await archivoService.actualizarPathsDescendencia(rutaAnterior, rutaNueva, session);
+
+                await bitacoraService.registrarAccion(usuarioId, bitacoraEnum.MODIFICACION, moduloAfectado.CARPETA, `Se movió a ${nuevoPathDestino}`, id, session);
             });
             return true;
         } catch (error) {

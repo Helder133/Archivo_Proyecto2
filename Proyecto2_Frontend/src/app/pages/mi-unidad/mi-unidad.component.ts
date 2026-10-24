@@ -1,7 +1,7 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { CarpetaCardComponent } from '../../components/drive/carpeta-card/carpeta-card.component';
 import { CarpetaService } from '../../services/carpeta/carpeta.service';
-import { ArchivoService } from '../../services/archivo/archivo.service';
+import { ArchivoService } from '../../services/archive/archivo.service';
 import { Carpeta } from '../../models/carpeta.models';
 import { Archivo } from '../../models/archivo.models';
 import { ArchivoCardComponent } from '../../components/drive/archivo-card/archivo-card.component';
@@ -14,16 +14,20 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
 import { VisorArchivoComponent } from '../../components/drive/visor-archivo/visor-archivo.component';
 import { ActivatedRoute } from '@angular/router';
+import { MoverFormComponent } from '../../components/drive/mover-form/mover-form.component';
+import { AlmacenamientoService } from '../../services/almacenamiento/almacenamiento.service';
 
 @Component({
   selector: 'app-mi-unidad.component',
-  imports: [CarpetaCardComponent, ArchivoCardComponent, CarpetaFormComponent, ArchivoFormComponent, CompartirFormComponent, ReactiveFormsModule, VisorArchivoComponent],
+  imports: [CarpetaCardComponent, ArchivoCardComponent, CarpetaFormComponent,
+    ArchivoFormComponent, CompartirFormComponent, ReactiveFormsModule, VisorArchivoComponent, MoverFormComponent],
   templateUrl: './mi-unidad.component.html'
 })
 export class MiUnidadComponent implements OnInit {
   private carpetaService = inject(CarpetaService);
   private archivoService = inject(ArchivoService);
   private usuarioService = inject(UsuarioService);
+  private almacenamientoService = inject(AlmacenamientoService);
   private route = inject(ActivatedRoute);
 
   // Estados de navegación
@@ -58,6 +62,10 @@ export class MiUnidadComponent implements OnInit {
   // Estado para el visor de archivos
   mostrarVisor = signal<boolean>(false);
   blobVisualizacion = signal<Blob | null>(null);
+
+  // Estado para el formulario de mover
+  mostrarFormMover = signal<boolean>(false);
+  recursoAMover = signal<{ id: string, nombre: string, tipo: 'archivo' | 'carpeta', pathActual: string } | null>(null);
 
   breadcrumbs = computed(() => {
     const path = this.currentPath();
@@ -259,6 +267,7 @@ export class MiUnidadComponent implements OnInit {
         next: () => {
           this.cerrarFormularios();
           this.cargarContenido();
+          this.almacenamientoService.notificarActualizacion();
         },
         error: (err) => this.errorMessage.set(err.error?.error || err.error?.mensaje || 'Error al subir archivo')
       });
@@ -269,6 +278,7 @@ export class MiUnidadComponent implements OnInit {
           next: () => {
             this.cerrarFormularios();
             this.cargarContenido();
+            this.almacenamientoService.notificarActualizacion();
           },
           error: (err) => this.errorMessage.set(err.error?.mensaje || 'Error al actualizar contenido')
         });
@@ -344,6 +354,8 @@ export class MiUnidadComponent implements OnInit {
     this.searchControl.enable();
     this.mostrarVisor.set(false);
     this.blobVisualizacion.set(null);
+    this.mostrarFormMover.set(false);
+    this.recursoAMover.set(null);
   }
 
   actualizarPermisoColaborador(datos: { usuarioId: string, permiso: string }) {
@@ -415,7 +427,10 @@ export class MiUnidadComponent implements OnInit {
   moverArchivoAPapelera(id: string) {
     if (confirm('¿Estás seguro de mover este archivo a la papelera?')) {
       this.archivoService.cambiarEstadoArchivo(id).subscribe({
-        next: () => this.cargarContenido(),
+        next: () => {
+          this.cargarContenido();
+          this.almacenamientoService.notificarActualizacion(); 
+        },
         error: (err) => this.errorMessage.set(err.error?.mensaje || 'Error al mover a papelera')
       });
     }
@@ -453,6 +468,35 @@ export class MiUnidadComponent implements OnInit {
         this.cargando.set(false);
       }
     });
+  }
+
+  abrirMoverCarpeta(carpeta: Carpeta) {
+    this.cerrarFormularios();
+    this.recursoAMover.set({ id: carpeta._id, nombre: carpeta.nombre, tipo: 'carpeta', pathActual: carpeta.path });
+    this.mostrarFormMover.set(true);
+  }
+
+  abrirMoverArchivo(archivo: Archivo) {
+    this.cerrarFormularios();
+    this.recursoAMover.set({ id: archivo._id, nombre: archivo.nombre, tipo: 'archivo', pathActual: archivo.path });
+    this.mostrarFormMover.set(true);
+  }
+
+  guardarMovimiento(nuevoPath: string) {
+    const recurso = this.recursoAMover();
+    if (!recurso) return;
+
+    if (recurso.tipo === 'archivo') {
+      this.archivoService.moverArchivo(recurso.id, nuevoPath).subscribe({
+        next: () => { this.cerrarFormularios(); this.cargarContenido(); },
+        error: (err) => this.errorMessage.set(err.error?.mensaje || 'Error al mover archivo')
+      });
+    } else {
+      this.carpetaService.moverCarpeta(recurso.id, nuevoPath).subscribe({
+        next: () => { this.cerrarFormularios(); this.cargarContenido(); },
+        error: (err) => this.errorMessage.set(err.error?.mensaje || 'Error al mover carpeta')
+      });
+    }
   }
 
 }

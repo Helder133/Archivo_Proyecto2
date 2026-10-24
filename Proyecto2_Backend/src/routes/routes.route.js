@@ -23,4 +23,10 @@ router.use(require('./compartido.route'));
 // Rutas de reporte
 router.use(require('./reporte.route'));
 
+// Rutas de papelera
+router.use(require('./papelera.routes'));
+
+// Rutas de almacenamiento
+router.use(require('./almacenamiento.route'));
+
 module.exports = router;

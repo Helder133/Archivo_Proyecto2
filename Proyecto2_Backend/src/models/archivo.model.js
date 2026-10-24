@@ -40,7 +40,12 @@ const archivoSchema = new mongosee.Schema(
         archivoGridFsId: {
             type: mongosee.Schema.Types.ObjectId,
             required: true
-        },
+        }, 
+        peso: {
+            type: Number,
+            required: true,
+            default: 0
+        }, 
         fechaCreacion: {
             type: Date,
             default: Date.now

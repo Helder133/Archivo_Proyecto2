@@ -10,6 +10,7 @@ class ArchivoController {
 
             // Extraemos la extensión del nombre original (ej: documento.txt -> .txt)
             const nombreOriginal = req.file.originalname;
+            const pesoArchivo = req.file.size; 
             const tipoExtension = nombreOriginal.substring(nombreOriginal.lastIndexOf('.'));
             const usuarioId = req.usuario.id;
 
@@ -17,14 +18,15 @@ class ArchivoController {
                 nombre: req.body.nombre || nombreOriginal, // Si no se proporciona un nombre, usamos el original
                 tipo: tipoExtension,
                 path: req.body.path,
-                usuarioId: usuarioId
+                usuarioId: usuarioId,
+                peso: pesoArchivo
             };
 
             await archivoService.createArchivo(archivoData, req.file.buffer);
 
             res.status(201).json({ message: 'Archivo subido exitosamente.' });
         } catch (error) {
-            res.status(400).json({ error: error.message });
+            res.status(400).json({ mensaje: error.message })
         }
     }
 
@@ -130,10 +132,10 @@ class ArchivoController {
             if (!req.file) {
                 return res.status(400).json({ error: 'No se adjuntó el nuevo documento físico.' });
             }
-            await archivoService.actualizarContenido(req.params.id, req.file.buffer, usuarioId);
+            await archivoService.actualizarContenido(req.params.id, req.file.buffer, req.file.size, usuarioId);
             res.json({ message: 'Contenido del archivo actualizado correctamente.' });
         } catch (error) {
-            res.status(400).json({ error: error.message });
+            res.status(400).json({ mensaje: error.message });
         }
     }
 
@@ -195,6 +197,18 @@ class ArchivoController {
             res.json({ message: 'Usuario eliminado del archivo correctamente' });
         } catch (error) {
             res.status(400).json({ error: error.message });
+        }
+    }
+
+    async moverArchivo(req, res) {
+        try {
+            const usuarioId = req.usuario.id;
+            const { id } = req.params;
+            const { nuevoPathDestino } = req.body;
+            await archivoService.moverArchivo(id, nuevoPathDestino, usuarioId);
+            res.json({ message: 'Archivo movido correctamente' });
+        } catch (error) {
+            res.status(400).json({ mensaje: error.message });
         }
     }
 

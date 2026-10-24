@@ -40,6 +40,10 @@ export class CarpetaService {
     return this.http.put(`${this.apiUrl}/${id}`, data);
   }
 
+  moverCarpeta(id: string, nuevoPathDestino: string): Observable<any> {
+    return this.http.put(`${this.apiUrl}/mover/${id}`, { nuevoPathDestino });
+  }
+
   // --- ESTADO Y ELIMINACIÓN ---
   cambiarEstadoCarpeta(id: string): Observable<any> {
     return this.http.patch(`${this.apiUrl}/cambiar-estado/${id}`, {});
